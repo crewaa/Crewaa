@@ -23,3 +23,11 @@ export async function logout() {
   // Clear access token
   localStorage.removeItem("access_token")
 }
+
+export async function setPassword(data: {
+  setup_token: string
+  password: string
+}) {
+  const res = await api.post("/auth/set-password", data)
+  return res.data // { access_token, role }
+}

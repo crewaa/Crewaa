@@ -31,12 +31,22 @@ export function GoogleAuthButton({ role }: { role?: Role }) {
               }
             )
 
-            const { access_token, role: userRole } = res.data
+            const data = res.data
 
-            localStorage.setItem("access_token", access_token)
+            // New user (or existing Google-only user) — needs to set a password
+            if (data.needs_password) {
+              const params = new URLSearchParams({
+                token: data.setup_token,
+                email: data.email,
+              })
+              router.push(`/set-password?${params.toString()}`)
+              return
+            }
 
+            // Returning user who already has a password — go straight to dashboard
+            localStorage.setItem("access_token", data.access_token)
             router.push(
-              userRole === "BRAND"
+              data.role === "BRAND"
                 ? "/dashboard/brand"
                 : "/dashboard/influencer"
             )

@@ -1,10 +1,11 @@
 from fastapi import APIRouter, Depends, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import AsyncSessionLocal
-from app.modules.auth.schemas import SignupRequest, LoginRequest, TokenResponse
-from app.modules.auth.service import signup_user, authenticate_user
-from app.modules.auth.schemas import GoogleAuthRequest
-from app.modules.auth.service import google_auth
+from app.modules.auth.schemas import (
+    SignupRequest, LoginRequest, TokenResponse,
+    GoogleAuthRequest, GoogleAuthResponse, SetPasswordRequest
+)
+from app.modules.auth.service import signup_user, authenticate_user, google_auth, set_password_service
 
 
 router = APIRouter(prefix="/auth", tags=["Auth"])
@@ -28,19 +29,23 @@ async def login(data: LoginRequest, db: AsyncSession = Depends(get_db)):
     return {"access_token": access_token, "role": role}
 
 
-@router.post("/google", response_model=TokenResponse)
+@router.post("/google", response_model=GoogleAuthResponse)
 async def google_login(
     data: GoogleAuthRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    access_token, role = await google_auth(
-        db, data.id_token, data.role
-    )
+    result = await google_auth(db, data.id_token, data.role)
+    return result
 
-    return {
-        "access_token": access_token,
-        "role": role,
-    }
+
+@router.post("/set-password", response_model=TokenResponse)
+async def set_password(
+    data: SetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    access_token, role = await set_password_service(db, data.setup_token, data.password)
+    return {"access_token": access_token, "role": role}
+
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
 async def logout(response: Response):

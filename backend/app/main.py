@@ -16,7 +16,9 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "http://127.0.0.1:3000",
-        "https://crewaa-m4pz.vercel.app"
+        "https://crewaa-m4pz.vercel.app",
+        "https://crewaa.in",
+        "https://www.crewaa.in",
     ],
     allow_credentials=True,
     allow_methods=["*"],
