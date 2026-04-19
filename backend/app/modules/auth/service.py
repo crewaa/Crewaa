@@ -36,6 +36,9 @@ def decode_setup_token(token: str) -> dict:
 
 
 async def signup_user(db: AsyncSession, email: str, password: str, role: str):
+    if role.upper() == "ADMIN":
+        raise HTTPException(403, "Admin accounts cannot be created via signup")
+
     result = await db.execute(select(User).where(User.email == email))
     if result.scalar():
         raise HTTPException(400, "User already exists")

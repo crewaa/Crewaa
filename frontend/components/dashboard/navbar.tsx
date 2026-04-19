@@ -14,7 +14,9 @@ export default function DashboardNavbar({ user }: any) {
 
 
   function handleLogoClick() {
-    if (user.role === "BRAND") {
+    if (user.role === "ADMIN") {
+      router.push("/dashboard/admin");
+    } else if (user.role === "BRAND") {
       router.push("/dashboard/brand");
     } else if (user.role === "INFLUENCER") {
       router.push("/dashboard/influencer");
@@ -22,7 +24,9 @@ export default function DashboardNavbar({ user }: any) {
   }
 
   function handleDashboardClick() {
-    if (user.role === "BRAND") {
+    if (user.role === "ADMIN") {
+      router.push("/dashboard/admin/users");
+    } else if (user.role === "BRAND") {
       router.push("/dashboard/analytics/brand");
     } else if (user.role === "INFLUENCER") {
       router.push("/dashboard/analytics/influencer");

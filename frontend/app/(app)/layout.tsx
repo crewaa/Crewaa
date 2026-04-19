@@ -19,6 +19,10 @@ export default function DashboardLayout({ children }: any) {
         const data = await getCurrentUser();
         setUser(data);
 
+        if(data.role === "ADMIN" && !location.pathname.startsWith("/dashboard/admin")) {
+          router.replace("/dashboard/admin");
+        }
+
         if(data.role === "BRAND" && !location.pathname.startsWith("/dashboard/brand")) {
           router.replace("/dashboard/brand");
         }

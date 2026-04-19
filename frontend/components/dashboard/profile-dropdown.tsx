@@ -54,10 +54,10 @@ export default function ProfileDropdown({ user }: Props) {
         <DropdownMenuSeparator />
 
         <DropdownMenuItem onClick={() => router.push(
-          user.role === "BRAND" ? "/dashboard/brand-profile" : "/dashboard/profile"
+          user.role === "ADMIN" ? "/dashboard/admin" : user.role === "BRAND" ? "/dashboard/brand-profile" : "/dashboard/profile"
         )}>
           <User className="mr-2 h-4 w-4" />
-          Profile
+          {user.role === "ADMIN" ? "Admin Console" : "Profile"}
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

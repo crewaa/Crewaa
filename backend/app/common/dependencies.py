@@ -11,14 +11,14 @@ from app.modules.users.models import User
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
 
 def require_roles(*roles: str):
-    def checker(user=Depends(lambda: {"role": "ADMIN"})):
-        if user["role"] not in roles:
+    async def checker(current_user: User = Depends(get_current_user)):
+        if current_user.role not in roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
                 detail="Insufficient permissions",
             )
-        return user
-    return checker
+        return current_user
+    return Depends(checker)
 
 
 async def get_db():

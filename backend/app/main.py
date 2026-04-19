@@ -7,6 +7,7 @@ from app.modules.users.router import router as users_router
 from app.modules.instagram.routes.instagram import router as instagram_router
 from app.modules.youtube.routes import router as youtube_router
 from app.modules.ai.router import router as ai_router
+from app.modules.admin.router import router as admin_router
 
 
 app = FastAPI(title=settings.app_name)
@@ -31,3 +32,5 @@ app.include_router(users_router)
 app.include_router(instagram_router)
 app.include_router(youtube_router)
 app.include_router(ai_router)
+app.include_router(admin_router)
+
