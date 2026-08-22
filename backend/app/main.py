@@ -18,6 +18,7 @@ from app.modules.youtube.routes import router as youtube_router
 from app.modules.ai.router import router as ai_router
 from app.modules.admin.router import router as admin_router
 from app.modules.campaigns.router import router as campaigns_router
+from app.modules.messaging.router import router as messaging_router
 
 
 # Before the app is built, so the ASGI integration wraps everything below.
@@ -134,3 +135,4 @@ app.include_router(youtube_router)
 app.include_router(ai_router)
 app.include_router(admin_router)
 app.include_router(campaigns_router)
+app.include_router(messaging_router)

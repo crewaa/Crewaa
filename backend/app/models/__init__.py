@@ -5,3 +5,4 @@ from app.modules.users.models import BrandProfile, CreatorProfile, SavedCreator
 from app.modules.scraping.models import ScrapeJob
 from app.modules.deals.models import OpportunityInterest
 from app.modules.campaigns.models import Campaign
+from app.modules.messaging.models import Message

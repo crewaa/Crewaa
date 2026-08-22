@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { BarChart3, Inbox, LayoutGrid, Megaphone, UserRound } from "lucide-react";
+import { BarChart3, Inbox, LayoutGrid, Megaphone, MessageCircle, UserRound } from "lucide-react";
 
 import { fadeSlideUp } from "@/lib/motion";
 import { CurrentUser } from "@/lib/types";
@@ -22,12 +22,14 @@ const NAV: Record<CurrentUser["role"], { href: string; label: string; icon: type
   INFLUENCER: [
     { href: "/dashboard/influencer", label: "Studio", icon: LayoutGrid },
     { href: "/dashboard/analytics/influencer", label: "Analytics", icon: BarChart3 },
+    { href: "/dashboard/messages", label: "Messages", icon: MessageCircle },
     { href: "/dashboard/profile", label: "Profile", icon: UserRound },
   ],
   BRAND: [
     { href: "/dashboard/brand", label: "Studio", icon: LayoutGrid },
     { href: "/dashboard/brand/campaigns", label: "Campaigns", icon: Megaphone },
     { href: "/dashboard/brand/interested", label: "Responses", icon: Inbox },
+    { href: "/dashboard/messages", label: "Messages", icon: MessageCircle },
     { href: "/dashboard/analytics/brand", label: "Dashboard", icon: BarChart3 },
     { href: "/dashboard/brand-profile", label: "Profile", icon: UserRound },
   ],

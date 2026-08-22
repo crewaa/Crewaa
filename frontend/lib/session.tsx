@@ -49,6 +49,7 @@ const SHARED_PREFIXES = [
   "/dashboard/profile",
   "/dashboard/brand-profile",
   "/dashboard/analytics",
+  "/dashboard/messages",
 ]
 
 export function isRouteAllowed(role: Role, pathname: string): boolean {
