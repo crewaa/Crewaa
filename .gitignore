@@ -36,3 +36,6 @@ ci.db
 # the same mistake as the leaked Neon credential and just as hard to undo.
 Crewaa_Creator_Database_India.xlsx
 *Creator_Database*.xlsx
+
+# pnpm's local content-addressable store — a build artefact, never source.
+.pnpm-store/

@@ -201,7 +201,16 @@ Full detail in `docs/03-domain-model.md`.
     the variant as `&:is(.dark *)` and `:root` sets a *white* `--background`, so without that
     class ~48 `dark:` utilities silently stop applying. `next-themes` is gone; do not reintroduce
     a runtime theme without building light mode properly.
-26. **Before any `git push`, read the checklist at the top of `ACTION-REQUIRED.md` and surface
+26. **Never hand-edit `frontend/package.json`'s dependencies — use `pnpm add` / `pnpm remove`.**
+    CI installs with `pnpm install --frozen-lockfile`, which fails outright when `package.json`
+    and `pnpm-lock.yaml` disagree. Removing `next-themes` by editing the JSON directly turned the
+    whole frontend job red in 9 seconds while every local check still passed, because
+    `tsc`/`lint`/`build` all run against the *already-installed* `node_modules` and never consult
+    the lockfile. If the lockfile ever does need regenerating on its own, `pnpm install
+    --lockfile-only` does it without touching `node_modules`, and the way to verify is a
+    `--frozen-lockfile` install in a scratch copy of `package.json` + `pnpm-lock.yaml` — running
+    it in place would purge a `node_modules` built for a different platform.
+27. **Before any `git push`, read the checklist at the top of `ACTION-REQUIRED.md` and surface
     it to Vishal first.** He asked to be reminded at push time about setting `SENTRY_DSN` on
     Render and `NEXT_PUBLIC_SENTRY_DSN` on Vercel. Both hosts have a way of accepting the
     variable while continuing to run without it, so "I added it" is not the same as "it took
