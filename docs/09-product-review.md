@@ -490,3 +490,50 @@ Mobile is also fine — zero horizontal overflow at 390px across landing, studio
 
 §1 and §4 are the ones I'd do today — one makes the app usable, the other makes the matching mean
 something. §2 and §3 are what turn it from a demo into a business.
+
+---
+
+## Incident 2026-09-30 — Instagram imports broken by an unpinned SDK
+
+**Symptom.** Instagram imports failed for every user on production. The screen said
+*"Could not fetch @name. The account may be private, renamed, or Instagram may be rate-limiting
+us."* — so the obvious reading was that Instagram was blocking Crewaa.
+
+**It was not.** Apify's console showed every run **succeeding** in 2-4 seconds, returning one
+result, and being billed. The data was arriving and then being thrown away. Render's logs had
+the real cause, which nothing was surfacing:
+
+```
+Instagram scraper failed for user 39: Scraping error: 'Run' object is not subscriptable
+```
+
+**Root cause.** `apify-client` was declared in `pyproject.toml` with no version bound. Version 3
+changed `actor.call()` from returning a `dict` to returning a `Run` pydantic model. Render
+reinstalls dependencies on every deploy, so a deploy silently upgraded the major version and
+`run["defaultDatasetId"]` stopped working. One line.
+
+**Three things made a one-line bug expensive:**
+
+| | |
+|---|---|
+| **Unpinned dependency** | A redeploy could change a major version of the only interface to a paid service. Which version you get even varies by Python: pip resolves `apify-client` to 3.x on 3.11+ and caps at 2.5.1 on 3.10. |
+| **No test at the client boundary** | `test_scraping.py` mocks `scrape_instagram_creator`, so the wrapper underneath — the exact broken line — had zero coverage. `test_gemini_client.py` existed for precisely this reason on the Gemini side; Apify never got the same treatment. |
+| **One catch-all error message** | Config errors, parse errors, Instagram blocks and private accounts all produced the same sentence, blaming the creator's account. A missing `APIFY_TOKEN` was even relabelled "Creator not found". The message actively misdirected the investigation. |
+
+**Fixed.**
+- `_dataset_id()` reads either shape (`Run` model or legacy dict), rejects `None`, and names the
+  SDK explicitly if a third shape ever appears.
+- `apify-client>=3.1,<4` and `google-genai>=2.18,<3` — the AI engine had the identical exposure.
+- `app/modules/scraping/errors.py` splits failures into **ours** (`ScrapeConfigurationError`),
+  **theirs** (`ProfileNotFoundError`) and **the provider's** (`ScrapeUpstreamError`), each with
+  its own user-facing message. Our own failure now reads *"this is a problem on our side —
+  nothing is wrong with your account"*.
+- `tests/test_apify_client.py` — 12 tests against a fake shaped like the real SDK, including a
+  `Run` object that raises on subscripting. **Verified non-vacuous**: reintroducing the original
+  one-line bug turns 4 of them red.
+
+**Worth remembering:** every failed import still ran the actor and consumed Apify credit. A
+failure that costs money is not a cheap failure, and nothing was alerting on it — Sentry is wired
+in code but still not enabled on Render, so the only record was a log line nobody was reading.
+
+Verified: **281 backend tests** (12 new), full suite green.

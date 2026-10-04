@@ -2,6 +2,7 @@ from typing import Dict, Any
 
 from app.core.logging import logger
 from app.modules.instagram.services.apify_client import scrape_instagram_creator
+from app.modules.scraping.errors import ScrapeError, ScrapeUpstreamError
 
 POST_LIMIT = 15
 
@@ -62,7 +63,14 @@ async def scrape_instagram(username: str) -> Dict[str, Any]:
             "posts": posts_data,
         }
         
-    except ValueError as e:
-        raise Exception(f"Creator not found: {str(e)}")
+    except ScrapeError:
+        # Already classified (configuration / not-found / upstream). Let it
+        # through untouched: the caller decides what the user is told, and
+        # flattening it here is what caused our own parsing bug to be reported
+        # as "the account may be private".
+        raise
     except Exception as e:
-        raise Exception(f"Scraping error: {str(e)}")
+        # Anything unclassified is a fault on our side until proven otherwise.
+        # Blaming Instagram by default sends the investigation the wrong way.
+        logger.exception("Unexpected Instagram scraping failure for @{}", username)
+        raise ScrapeUpstreamError(f"Unexpected scraping failure: {e}") from e

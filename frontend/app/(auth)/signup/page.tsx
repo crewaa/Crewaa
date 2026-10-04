@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion"
 import Link from "next/link"
+import { AuthBrand } from "@/components/auth/auth-brand"
 
 const roles = [
   {
@@ -25,6 +26,8 @@ export default function SignupPage() {
         transition={{ duration: 0.4 }}
         className="w-full max-w-xl"
       >
+        <AuthBrand />
+
         <h1 className="text-2xl font-semibold text-white text-center">
           Join Crewaa
         </h1>

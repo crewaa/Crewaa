@@ -1,4 +1,4 @@
-from sqlalchemy import JSON, String, Boolean, ForeignKey, Text, DateTime, UniqueConstraint, text
+from sqlalchemy import JSON, String, Boolean, ForeignKey, Integer, Text, DateTime, UniqueConstraint, text
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
@@ -18,6 +18,38 @@ class User(Base):
     hashed_password: Mapped[str | None]
     role: Mapped[str] = mapped_column(String)  # BRAND | INFLUENCER | ADMIN
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+    # Bumped on logout and on any password change. Every refresh token carries
+    # the version it was minted under, so incrementing this invalidates all of
+    # them at once. Without it, "log out" only deletes a cookie — which does
+    # nothing to a copy of that cookie someone else already has.
+    token_version: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default=text("0"), default=0
+    )
+
+    # ---- Manual verification (V2 Phase 3, decision #4) ----
+    #
+    # On `users` rather than split across creator_profiles and brand_profiles:
+    # one column answers "is this account verified" for both roles, the admin
+    # console already lists users, and a creator who later adds a brand account
+    # does not need two separate review queues.
+    #
+    # Nothing in the product is gated on this yet. It is a signal shown to the
+    # other party, not a permission — gating discovery on it would quietly
+    # delist every existing creator the moment it shipped.
+    verification_status: Mapped[str] = mapped_column(
+        String, nullable=False, server_default=text("'unverified'"),
+        default="unverified",
+    )
+    verification_requested_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    verification_reviewed_at: Mapped[DateTime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+    #: Why an admin rejected it, shown back to the user so a rejection is
+    #: something they can act on rather than a dead end.
+    verification_note: Mapped[str | None] = mapped_column(Text, nullable=True)
     instagram_username: Mapped[str | None] = mapped_column(String, nullable=True)
 
     # CURRENT_TIMESTAMP, not now(): portable across PostgreSQL and SQLite,

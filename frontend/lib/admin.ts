@@ -86,3 +86,94 @@ export async function createAdminUser(data: {
   const res = await api.post("/admin/users", data)
   return res.data
 }
+
+// ---------------------------------------------------------------------------
+// Trust & safety queues (V2 Phase 3)
+// ---------------------------------------------------------------------------
+
+export interface AdminReport {
+  id: number
+  reporter_id: number
+  reporter_email: string
+  reported_id: number
+  reported_email: string
+  interest_id: number | null
+  reason: string
+  detail: string | null
+  status: string
+  created_at: string
+  admin_note: string | null
+}
+
+export interface AdminDispute {
+  id: number
+  interest_id: number
+  raised_by_id: number
+  raised_by_email: string
+  reason: string
+  detail: string
+  status: string
+  created_at: string
+  resolution_note: string | null
+}
+
+export interface AdminVerification {
+  user_id: number
+  email: string
+  role: string
+  status: string
+  requested_at: string | null
+}
+
+export interface TrustCounts {
+  reports: Record<string, number>
+  open_disputes: number
+  pending_verifications: number
+}
+
+export async function getTrustCounts(): Promise<TrustCounts> {
+  const res = await api.get("/admin/trust/reports/counts")
+  return res.data
+}
+
+export async function listReports(status = "open"): Promise<AdminReport[]> {
+  const res = await api.get("/admin/trust/reports", { params: { status } })
+  return res.data
+}
+
+export async function resolveReport(
+  id: number,
+  status: "reviewed" | "actioned" | "dismissed",
+  note?: string,
+): Promise<AdminReport> {
+  const res = await api.post(`/admin/trust/reports/${id}`, { status, note })
+  return res.data
+}
+
+export async function listAdminDisputes(status = "open"): Promise<AdminDispute[]> {
+  const res = await api.get("/admin/trust/disputes", { params: { status } })
+  return res.data
+}
+
+export async function resolveDispute(
+  id: number,
+  status: "resolved" | "dismissed",
+  note: string,
+): Promise<AdminDispute> {
+  const res = await api.post(`/admin/trust/disputes/${id}`, { status, note })
+  return res.data
+}
+
+export async function listVerifications(): Promise<AdminVerification[]> {
+  const res = await api.get("/admin/trust/verifications")
+  return res.data
+}
+
+export async function reviewVerification(
+  userId: number,
+  approve: boolean,
+  note?: string,
+): Promise<AdminVerification> {
+  const res = await api.post(`/admin/trust/verifications/${userId}`, { approve, note })
+  return res.data
+}

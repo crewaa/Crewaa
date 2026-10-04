@@ -159,3 +159,56 @@ Also note: `8230328dad8f`'s docstring says `Revises: 3b69128322bd` while its act
 - **No retention policy, no deletion request handling, no consent record.** Admin delete cascades, which is the only erasure path.
 - **No soft delete, no audit log.** Admin user deletion is permanent and unrecorded.
 - **No tenant isolation concept** — there are no organisations or teams; a user is the unit of ownership.
+
+---
+
+## V2 Phase 2 & 3 tables (added 2026-10-04)
+
+Migrations `a4d81e37c6b2`, `b9e5f10a7c43`, `c7a3d84f1e09`. All additive — no existing column is
+altered or dropped. Head is `c7a3d84f1e09`; the chain is 28 revisions and still linear.
+
+### New columns on `users`
+
+| Column | Why |
+|---|---|
+| `token_version` | int, NOT NULL, default 0. Every refresh token carries the version it was minted under; incrementing invalidates all of them at once. This is what makes logout mean something — clearing a cookie does nothing to a copy someone already took. |
+| `verification_status` | `unverified` / `pending` / `verified` / `rejected`. On `users` rather than split across the two profile tables so one column and one queue cover both roles. |
+| `verification_requested_at`, `verification_reviewed_at` | queue ordering and audit |
+| `verification_note` | why an admin rejected it — shown back to the user, since they can reapply |
+
+The two NOT NULL additions carry `server_default` because `users` is populated: existing rows need
+a value, and every live account must start on the same token version as the tokens it will be
+issued next.
+
+### `notifications`
+
+Recipient (`user_id`), `kind`, `title`, `body`, `link`, optional `interest_id`, `created_at`,
+`read_at`.
+
+The **text and link are stored, not derived**. A notification records what was true when it fired;
+rendering it from the live row would mean "Terms agreed — ₹45,000" silently changes if the record
+does, which defeats the purpose of an event feed. Indexed on `(user_id, created_at)` and
+`(user_id, read_at)` — the two queries that run on every dashboard load.
+
+### `user_blocks`
+
+`(blocker_id, blocked_id)`, unique on the pair. One row per direction, but **symmetric in effect**:
+a single block in either direction stops messages both ways. Nothing is hidden or deleted.
+
+### `user_reports`
+
+`reporter_id`, `reported_id`, optional `interest_id` (`ON DELETE SET NULL`, so a deleted thread
+does not erase the report), `reason`, `detail`, `status`, `reviewed_by_id`, `admin_note`.
+The reported person is never notified.
+
+### `deal_disputes`
+
+`interest_id`, `raised_by_id`, `reason`, `detail`, `status`, `resolved_by_id`, `resolution_note`.
+
+**At most one open dispute per deal**, enforced by the partial unique index
+`uq_deal_disputes_one_open` (`WHERE status = 'open'`) rather than by the handler — the same
+reasoning as `uq_deal_offers_one_accepted`. A read-then-write check loses a genuine race, and two
+open disputes on one deal have no sensible resolution.
+
+A dispute sits **beside** the delivery record and never touches it. Anything that let a dispute
+flip a submission's status would let either party rewrite the evidence the argument is about.

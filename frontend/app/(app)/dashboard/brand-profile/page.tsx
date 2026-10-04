@@ -6,6 +6,7 @@ import { api } from "@/lib/axios"
 import { errorMessage } from "@/lib/types"
 import { useToast } from "@/components/ui/toast"
 import { Instagram, Youtube } from "lucide-react"
+import VerificationCard from "@/components/dashboard/verification-card"
 
 type BrandProfile = {
   id?: number
@@ -125,7 +126,11 @@ export default function BrandProfilePage() {
         <div className="absolute bottom-[-30%] right-[15%] h-[400px] w-[400px] rounded-full bg-indigo-500/10 blur-[140px]" />
       </div>
 
-      <main className="relative z-10 flex min-h-screen items-center justify-center px-6 py-12">
+      <main className="relative z-10 flex min-h-screen flex-col items-center justify-center gap-6 px-6 py-12">
+        <div className="w-full max-w-2xl">
+          <VerificationCard />
+        </div>
+
         <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-8 space-y-6">
           <div>
             <h1 className="text-2xl font-bold">

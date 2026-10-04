@@ -35,10 +35,17 @@ dependencies = [
   "python-dateutil",
 
   # AI Engine
-  "google-genai",
+  # Pinned to a major version deliberately. Both of these SDKs are the sole
+  # interface to a paid external service, and both have changed their response
+  # shapes across majors. `apify-client` 3 turned `actor.call()` from a dict
+  # into a `Run` model, which took production Instagram imports down on
+  # 2026-09-30 after a Render redeploy silently upgraded it — Apify kept
+  # succeeding and charging while our parsing failed. Floating majors on a
+  # dependency nobody is watching is how that happens again.
+  "google-genai>=2.18,<3",
 
   # Instagram scraping
-  "apify-client",
+  "apify-client>=3.1,<4",
 ]
 
 [project.optional-dependencies]

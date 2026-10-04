@@ -5,7 +5,7 @@
 > if you forget, you can pick it up later without hunting through chat history.
 >
 > **This file must never contain an actual secret value.** Names and locations only.
-> Last updated: 2026-08-13.
+> Last updated: 2026-10-04.
 
 ---
 
@@ -32,6 +32,53 @@ Two ways this silently fails to take effect:
 * **Render** asks *"Save only"* or *"Save and deploy"* when you edit a variable. **Save only**
   leaves the running service on its old values until the next deploy, so the dashboard shows
   the DSN while the app never sees it. Choose *Save and deploy*.
+
+**1b. ~~Provision Redis and move Render off the free tier~~ — DEFERRED TO V3 (2026-10-04).**
+
+Costed and postponed. Render **background workers have no free tier** ($7/mo floor), and the
+spend was judged premature before there is transaction volume. Nothing to do now; the table
+below is kept for when it is picked up.
+
+| Host | What to do | Variable |
+|---|---|---|
+| **Render** | Upgrade the backend service to **Starter (~$7/mo)** | — |
+| **Render** | Add a **Redis** instance (Render Key Value, or Upstash free tier) | `REDIS_URL` |
+
+Why both: Starter kills the 30-60s cold start on the free tier, which is the thing users
+actually feel. Redis is what lets scrapes and AI calls run on a real worker instead of
+in-process, so a deploy stops killing in-flight jobs.
+
+`REDIS_URL` already exists in `app/core/config.py` and has been read-but-unused since V1. Until
+a real value is set, background work keeps running in-process exactly as it does today — the
+app does not break, it just does not get the benefit. Same *Save and deploy* caveat as above.
+
+**1c. Three new migrations ship in this batch.** All additive — no column is altered or
+dropped, so these are safe to run against production without a rehearsal:
+
+| Revision | What it does |
+|---|---|
+| `a4d81e37c6b2` | adds `users.token_version` (refresh-token revocation) |
+| `b9e5f10a7c43` | creates the `notifications` table |
+| `c7a3d84f1e09` | adds four `users.verification_*` columns; creates `user_blocks`, `user_reports`, `deal_disputes` |
+
+Head is now `c7a3d84f1e09`, 28 revisions, chain still linear.
+
+`a4d81e37c6b2` adds a NOT NULL column to a populated table, which is why it carries
+`server_default="0"` — existing rows need a value and must start on the same version as the
+tokens they will be issued next.
+
+**1d. Refresh-token cookies are cross-site today, and Safari blocks those.**
+The refresh token is set as an httpOnly cookie by the API. In production the frontend is
+`crewaa.in` (Vercel) and the API is on `onrender.com`, which are different registrable domains —
+so to the browser that cookie is **third-party**. It is sent with `SameSite=None; Secure`, which
+Chrome accepts today, but Safari blocks third-party cookies by default and Chrome is phasing
+them out.
+
+Where that leaves things: on a browser that blocks it, `/auth/refresh` simply fails and the user
+is bounced to `/login` exactly as before — it degrades to current behaviour rather than breaking.
+The real fix is to serve the API from **`api.crewaa.in`** (a Render custom domain plus a DNS
+CNAME), which makes the cookie same-site and makes refresh work everywhere. Worth doing; not
+urgent enough to block this batch.
 
 **2. One migration in this batch cannot be tested before it runs on Neon.**
 `f7a2c4e91b35` converts `creator_profiles.ai_summary` and `.cached_brand_deals` from TEXT to

@@ -12,17 +12,23 @@ export function LandingPageNavbar() {
           <div className="absolute inset-x-10 top-0 h-px bg-gradient-to-r from-transparent via-white/25 to-transparent" />
         </div>
 
-        <Link href="/" className="relative z-10 flex items-center gap-3 text-lg font-semibold tracking-tight">
+        <Link href="/" className="relative z-10 flex items-center" aria-label="Crewaa home">
+          {/* The full lockup, so the navbar matches the brand sheet exactly —
+              the mark and wordmark are one asset rather than an icon beside
+              hand-set text that can drift out of sync with it.
+
+              `unoptimized` because this is an SVG: Next's image optimizer
+              refuses SVGs unless `dangerouslyAllowSVG` is enabled globally,
+              and a vector gains nothing from raster optimization anyway. */}
           <Image
-            src="/Crewaa.png"
-            alt="Crewaa Logo"
-            width={33}
-            height={33}
-            className="shrink-0 bg-transparent"
+            src="/crewaa-logo-dark.svg"
+            alt="Crewaa"
+            width={108}
+            height={32}
+            priority
+            unoptimized
+            className="h-8 w-auto"
           />
-          <span className="text-lg font-bold tracking-tight text-white">
-            Crewaa
-          </span>
         </Link>
 
         <div className="relative z-10 flex items-center gap-3">

@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { FadeIn } from "@/components/motion/fade-in"
 import { errorMessage } from "@/lib/types"
+import { AuthBrand } from "@/components/auth/auth-brand"
 
 function SetPasswordForm() {
   const router = useRouter()
@@ -52,6 +53,7 @@ function SetPasswordForm() {
     <FadeIn>
       <main className="min-h-screen flex items-center justify-center px-6 bg-black">
         <div className="flex flex-col w-full max-w-sm">
+          <AuthBrand />
           <Card className="w-full max-w-sm bg-[#111318] border-white/10 p-8">
             {/* Header */}
             <div className="space-y-2 mb-6">

@@ -6,7 +6,7 @@ from sqlalchemy import select
 
 from app.core.config import settings
 from app.core.database import AsyncSessionLocal
-from app.core.security import SETUP_TOKEN_PURPOSE
+from app.core.security import ACCESS_TOKEN_TYPE, SETUP_TOKEN_PURPOSE
 from app.modules.users.models import User
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/auth/login")
@@ -34,6 +34,24 @@ async def get_current_user(
     # with the same secret as access tokens. It must never be accepted as a
     # session credential.
     if payload.get("purpose") == SETUP_TOKEN_PURPOSE:
+        raise HTTPException(
+            status_code=401,
+            detail="This token cannot be used for authentication",
+        )
+
+    # Only an access token authenticates a request.
+    #
+    # Every token Crewaa issues is signed with the same secret, so a valid
+    # signature says only that we minted it — not what it is for. Refresh
+    # tokens are long-lived by design and are handed to the browser in a
+    # cookie; if one were accepted here, that cookie would be a session
+    # credential lasting REFRESH_TOKEN_EXPIRE_DAYS instead of
+    # ACCESS_TOKEN_EXPIRE_MINUTES, and the short access-token lifetime would
+    # protect nothing.
+    #
+    # Checked explicitly rather than by exclusion: a token with no `type` at
+    # all is rejected too, so the next token kind added here fails closed.
+    if payload.get("type") != ACCESS_TOKEN_TYPE:
         raise HTTPException(
             status_code=401,
             detail="This token cannot be used for authentication",

@@ -31,13 +31,13 @@ Public domain **[V]**: `crewaa.in` / `www.crewaa.in`, plus a Vercel preview `cre
 | Frontend | Next.js 16.1.1 (App Router), React 19.2.3, TypeScript, Tailwind v4, shadcn/ui + Radix, framer-motion, recharts | `frontend/package.json` |
 | Backend | FastAPI (modular monolith), Python ≥3.11, uvicorn | `backend/pyproject.toml`, `app/main.py` |
 | ORM / DB | SQLAlchemy 2.0 async + asyncpg → PostgreSQL (Neon, `us-east-1`) | `app/core/database.py` |
-| Migrations | Alembic (`app/migrations`) — 21 revisions, linear, head = `f7a2c4e91b35` | `alembic.ini` |
+| Migrations | Alembic (`app/migrations`) — 28 revisions, linear, head = `c7a3d84f1e09` | `alembic.ini` |
 | Auth | Own JWT (python-jose) + bcrypt/passlib, plus Google Sign-In (ID-token verification) | `app/core/security.py`, `app/modules/auth/` |
 | AI | Google Gemini via **`google-genai`** (async client), model from `GEMINI_MODEL` (default `gemini-2.5-flash`) | `app/modules/ai/ai_service.py` |
 | Instagram data | Apify actor `apify/instagram-profile-scraper` | `app/modules/instagram/services/apify_client.py` |
 | YouTube data | YouTube Data API v3 (direct httpx calls) | `app/modules/youtube/scrapper.py` |
 | Rate limiting | In-process fixed-window counter | `app/common/rate_limit.py` |
-| Tests / CI | pytest (212 tests) + prompt evals + GitHub Actions | `backend/tests/`, `backend/evals/`, `.github/workflows/ci.yml` |
+| Tests / CI | pytest (333 tests) + prompt evals + GitHub Actions | `backend/tests/`, `backend/evals/`, `.github/workflows/ci.yml` |
 | Deployment | Frontend on **Vercel**; backend on **Render** (told by Vishal 2026-08-13 — no Render config is in the repo, so the service name, plan and URL are still **[?]**) | — |
 
 ---
@@ -53,10 +53,10 @@ pnpm lint       # eslint — currently 0 errors, keep it that way
 # Backend  (requires Python 3.11+)
 cd backend && ./scripts/setup-dev.sh        # recreates .venv, installs deps, writes a starter .env
 source .venv/bin/activate
-pytest -q                                   # 212 tests
+pytest -q                                   # 333 tests
 python -m evals.runner                      # prompt evals (offline; --live hits Gemini)
 uvicorn app.main:app --reload               # http://localhost:8000
-alembic upgrade head                        # safe as of 2026-08-10
+alembic upgrade head                        # safe as of 2026-10-04 (head c7a3d84f1e09)
 python seed_admin.py --email you@crewaa.in --password '...'
 ```
 
@@ -75,7 +75,7 @@ scan.
 backend/
   Dockerfile
   scripts/setup-dev.sh      # recreate .venv + starter .env
-  tests/                    # 212 tests, SQLite-backed, no network
+  tests/                    # 333 tests, SQLite-backed, no network
   evals/                    # prompt quality suite — see evals/README.md
   app/
     main.py                 # app, CORS from config, request-id middleware, error handler
@@ -84,7 +84,7 @@ backend/
                             #                    require_roles, require_self_or_admin
                             # rate_limit.py    = rate_limit (by IP), rate_limit_user (by account)
     models/                 # thin re-export shims so Alembic sees every model — do not delete
-    migrations/             # head = f7a2c4e91b35
+    migrations/             # head = c7a3d84f1e09
     modules/
       auth/                 # signup, login, Google OAuth, set-password, logout
       users/                # /users/me, creator profile, brand profile, saved creators
@@ -93,6 +93,11 @@ backend/
       instagram/            # Apify scraper, routes, scrape-status
       youtube/              # YouTube Data API scraper, routes, scrape-status
       scraping/             # scrape_jobs model + job bookkeeping (shared by both scrapers)
+      campaigns/            # Campaign entity — the brand's offer to anyone
+      deals/                # opportunity_interests + offers, deliveries, reviews (offer_router)
+      messaging/            # threads anchored on opportunity_interests; reveals the brand
+      notifications/        # in-app bell: Notification model, 4 endpoints, notify()
+      trust/                # blocks, reports, disputes, manual verification (+ admin_router)
       health/               # GET /health (verifies the database)
 frontend/
   app/
@@ -102,7 +107,8 @@ frontend/
       dashboard/
         influencer/         # Creator Studio → deals, growth-analyzer
         brand/              # Brand Studio → discover
-        admin/              # admin console → users, users/[id]
+        admin/              # admin console → users, users/[id], trust (reports/disputes/verifications)
+        messages/           # thread list + messages/[interestId] (terms, delivery, reviews, safety)
         analytics/          # influencer (IG/YT tabs) + brand (saved creators)
         profile/            # creator profile form
         brand-profile/      # brand profile form
@@ -112,14 +118,18 @@ frontend/
 
 ---
 
-## Data model (6 owned tables + 4 scraped tables)
+## Data model (15 owned tables + 4 scraped tables)
 
 `users` is the hub; everything cascades from it.
 
-- **`users`** — `id`, `email` (unique), `hashed_password` (nullable → Google-only users), `role`, `is_active` (now enforced), `instagram_username` (legacy/duplicated, unused).
+- **`users`** — `id`, `email` (unique), `hashed_password` (nullable → Google-only users), `role`, `is_active` (now enforced), `instagram_username` (legacy/duplicated, unused), `token_version` (refresh-token revocation), and the four `verification_*` columns.
 - **`creator_profiles`** — 1:1 with a user. Identity, IG/YT handles, `bio`, plus **AI result cache**: `ai_summary`, `cached_brand_deals` (both **JSONB** on PostgreSQL) and their `*_generated_at` timestamps.
 - **`brand_profiles`** — 1:1 with a user. `target_languages` / `platform_preferences` are **JSON-encoded strings in TEXT columns**, not JSONB.
 - **`saved_creators`** — brand↔creator join, written as a side effect of the AI discovery run. **Unique on `(brand_id, creator_id)`.**
+- **`notifications`** — recipient, kind, stored title/body/link, optional `interest_id`. Text and link are **stored, not derived**: a notification records what was true when it fired.
+- **`user_blocks`** — one row per direction, unique on the pair. A block in *either* direction stops messages *both* ways.
+- **`user_reports`** — reporter, reported, reason, status, reviewing admin. The reported person is never notified.
+- **`deal_disputes`** — one **open** dispute per interest, enforced by the partial unique index `uq_deal_disputes_one_open`.
 - **`scrape_jobs`** — one row per scrape attempt: platform, status, user-facing message, timings.
 - **`instagram_profiles` / `instagram_posts`** — append-only snapshots keyed by `user_id` + `scraped_at`.
 - **`youtube_channels` / `youtube_videos`** — upsert by `(user_id, channel_id)`; videos replaced on re-scrape.
@@ -144,11 +154,54 @@ Full detail in `docs/03-domain-model.md`.
 9. **Use `logger` from `app/core/logging.py`, never `print()`.** loguru uses `{}` placeholders with positional args: `logger.info("scraping {} for {}", name, uid)`. `diagnose=False` is deliberate so secrets never land in a traceback.
 10. **Always use the shared `get_db`** from `app/common/dependencies.py`. A duplicate local copy in `auth/router.py` previously made those routes invisible to dependency overrides.
 11. **Frontend route protection is client-side only** (`useEffect` → `getCurrentUser()` → `router.replace`). It is a UX guard. The server is the only real boundary.
-12. **The JWT lives in `localStorage`** and is attached by an axios interceptor. Refresh tokens are configured (`REFRESH_TOKEN_EXPIRE_DAYS`) but **not implemented** — when the access token expires the user is bounced to `/login`.
-13. **Run `pytest -q` before pushing.** 212 tests, ~48 seconds. `python -m evals.runner` is part of CI too.
+12. **The access token lives in `localStorage`; the refresh token does not.** The access token is
+    attached by an axios interceptor and is script-readable, which is tolerable because it expires
+    in minutes. The refresh token is an **httpOnly cookie** — putting it in `localStorage` would
+    turn one XSS bug into weeks of access. On a 401 the interceptor calls `/auth/refresh` once,
+    single-flight, and replays the request; only if that fails does the user land on `/login`.
+13. **Run `pytest -q` before pushing.** 333 tests, ~100 seconds. `python -m evals.runner` is part of CI too.
 14. **Never invent facts about this project.** Where the docs say **[?]**, the repository does not answer the question — ask Vishal or check the running system.
-15. **Preserve the spelling `Crewaa`.**
-16. **Before any `git push`, read the checklist at the top of `ACTION-REQUIRED.md` and surface
+15. **Deal offers are immutable and at most one may be accepted per interest.** Countering writes a new `deal_offers` row via `supersedes_id`; it never edits the old one. The single-acceptance rule is enforced by the partial unique index `uq_deal_offers_one_accepted`, not just by the handler. Nobody may respond to their own offer. `commission_rate_pct` is null by design until payment ships, and must then be **snapshotted at acceptance** so a rate change cannot rewrite an agreed deal.
+16. **Delivery and reviews have asymmetric roles, and both are evidence.** The creator submits, the brand reviews; neither may do the other's job. Delivery submissions are immutable (resubmitting supersedes) because a timestamp nobody can edit is what settles "you never posted it". Reviews are **double-blind** — neither side sees the other's until both submit or `REVIEW_REVEAL_DAYS` passes — and hidden reviews are excluded from public counts and averages, since an average that shifts on submission leaks what was said. Deal completion is **derived from submissions, never stored**.
+17. **Pin every third-party SDK to a major version, and test the client boundary.** `apify-client` was unpinned; version 3 changed `actor.call()` from returning a `dict` to a `Run` model, a Render redeploy silently upgraded it, and production Instagram imports failed for weeks with `'Run' object is not subscriptable` **while Apify kept succeeding and charging**. No test caught it because `test_scraping.py` mocks the layer *above* the SDK. `apify-client` and `google-genai` are now pinned `<4` / `<3`, and `tests/test_apify_client.py` + `tests/test_gemini_client.py` exercise each client boundary against a fake shaped like the real SDK.
+18. **Never report our own failure as the user's problem.** `app/modules/scraping/errors.py` splits failures into `ScrapeConfigurationError` (ours), `ProfileNotFoundError` (theirs) and `ScrapeUpstreamError` (the provider's). A single catch-all is what told creators "your account may be private" during an outage caused by our own parsing bug — and pointed the investigation at Instagram for weeks.
+19. **Preserve the spelling `Crewaa`** in prose, code, titles and metadata. The *logo* is
+    deliberately a lowercase `crewaa` wordmark — that is the drawn lockup in
+    `frontend/public/crewaa-logo-dark.svg`, not a typo to be corrected. Brand assets live in
+    `brand/`; the app only ever references the copies under `frontend/public` and `frontend/app`.
+    Use `crewaa-logo-dark.svg` on dark surfaces (every surface today), `crewaa-logo.svg` on light
+    ones. `next/image` needs `unoptimized` for these: Next's optimizer rejects SVG unless
+    `dangerouslyAllowSVG` is enabled globally, which we do not want.
+20. **Every token is signed with the same secret, so `type` is what distinguishes them.**
+    `get_current_user` requires `type == "access"` — checked positively, so a token with no
+    `type` fails closed too. A refresh token must never authenticate a request (it would turn a
+    weeks-long cookie into a session credential), and an access token must never be redeemable
+    at `/auth/refresh` (a token stolen from localStorage would renew itself forever). Refresh
+    tokens carry a `jti`: without it the payload is determined by `(sub, ver, exp)` and `exp`
+    has one-second resolution, so rotation silently returned a byte-identical token.
+21. **`users.token_version` is what makes logout mean anything.** Bumping it invalidates every
+    refresh token outstanding for that account. Clearing the cookie alone does nothing to a copy
+    someone already took off a shared machine. Setting a password bumps it too.
+22. **`notify()` stages on the caller's session and never commits.** The notification and the
+    event it describes must land in the same transaction, or a creator can be told "you have a
+    new offer" for an offer whose own commit then failed. Notifications go to whoever did *not*
+    act, via `counterpart_id()`. The review notification must never mention the rating — that
+    would walk straight through the double-blind in rule 16.
+23. **Trust & safety records are evidence, like delivery and reviews.** Blocking does not delete
+    or hide the conversation; reporting does not edit it; a dispute changes nothing about the
+    delivery or the agreed terms. A block in *either* direction stops messages *both* ways —
+    a one-way block is a mute button that still lets you shout. The reported person is never
+    notified, now or on review. Verification is a **signal, not a gate**: nothing is restricted
+    to verified accounts, because gating discovery on it would delist every existing creator.
+24. **After `await db.rollback()`, never touch an ORM attribute you did not read first.** The
+    rollback expires every object in the session, so a later `current_user.id` triggers a lazy
+    reload outside the async context and raises `MissingGreenlet` — turning a harmless duplicate
+    into a 500. Capture the ids before the write (see `trust/router.py`).
+25. **Crewaa is dark-only, and `<html>` carries a pinned `dark` class.** `globals.css` defines
+    the variant as `&:is(.dark *)` and `:root` sets a *white* `--background`, so without that
+    class ~48 `dark:` utilities silently stop applying. `next-themes` is gone; do not reintroduce
+    a runtime theme without building light mode properly.
+26. **Before any `git push`, read the checklist at the top of `ACTION-REQUIRED.md` and surface
     it to Vishal first.** He asked to be reminded at push time about setting `SENTRY_DSN` on
     Render and `NEXT_PUBLIC_SENTRY_DSN` on Vercel. Both hosts have a way of accepting the
     variable while continuing to run without it, so "I added it" is not the same as "it took
@@ -166,9 +219,10 @@ Full detail in `docs/03-domain-model.md`.
 |---|---|
 | **Neon password not yet rotated** | The only outstanding security action. Steps in `docs/08-hardening-log.md`. Still present in git history. |
 | **Sentry DSNs not set on Vercel/Render** | Code and local `.env` are done; production still reports nothing until the host env vars are added. See the checklist at the top of `ACTION-REQUIRED.md`. |
-| Refresh tokens are **not implemented** | `REFRESH_TOKEN_EXPIRE_DAYS` is read and never used, and `/auth/logout` deletes a `refresh_token` cookie that nothing ever sets — there is no `/refresh` endpoint. When the access token expires the user is bounced to `/login` mid-task. |
-| Background tasks are still in-process | A deploy still kills an in-flight scrape. It is no longer *invisible* — jobs stuck `running` past `SCRAPE_STUCK_AFTER_MINUTES` are failed with a retry message — but a real queue is still a v2 decision. |
-| Marketplace loop stops at "interested" | Campaigns, anonymous opportunities and expressions of interest all exist. What does not: messaging, agreeing terms, contracts, delivery tracking or payment. Today the handoff is a brand emailing a creator. |
+| Refresh cookie is cross-site | Implemented 2026-10-04. Works, but `crewaa.in` → `onrender.com` makes it a third-party cookie, which Safari blocks by default. It degrades to the old behaviour (bounced to `/login`) rather than breaking. Real fix: serve the API from `api.crewaa.in`. See `ACTION-REQUIRED.md` §1d. |
+| Background tasks are still in-process | **Deferred to V3** (Vishal, 2026-10-04). A deploy still kills an in-flight scrape, mitigated by the stuck-job sweeper. arq+Redis was costed: Render background workers have no free tier ($7/mo floor), and the spend was judged premature before there is transaction volume. `REDIS_URL` stays read-but-unused. |
+| Email notifications | The in-app bell exists (§2.1); email does not. Anything time-sensitive still depends on someone opening the app. Needs a transactional provider (Resend/Postmark/SES) and a domain verified by DNS. |
+| Marketplace loop stops at payment | Campaigns → opportunities → interest → **messaging (§1.1)** → **negotiated terms (§1.2)** → **delivery (§1.4)** → **two-way reviews (§1.5)** all exist. The one remaining gap is **money**: no payment or escrow, so Crewaa records a completed deal it cannot yet take a commission on. Blocked on compliance — see `VERSION-2-PLAN.md` §1.3. |
 | Frontend route protection is client-side only | By design — the server is the real boundary — but worth remembering when reading the dashboard code. |
 
 ---
@@ -185,7 +239,7 @@ Backend (`backend/.env`, gitignored — `app/core/config.py` is the source of tr
 | `JWT_SECRET_KEY` | yes | signs access + setup tokens |
 | `JWT_ALGORITHM` | yes | e.g. `HS256` |
 | `ACCESS_TOKEN_EXPIRE_MINUTES` | yes | access token lifetime |
-| `REFRESH_TOKEN_EXPIRE_DAYS` | yes | **read but never used** |
+| `REFRESH_TOKEN_EXPIRE_DAYS` | yes | refresh-token lifetime and the cookie's `max-age` |
 | `GOOGLE_CLIENT_ID` | yes | Google ID-token audience check |
 | `APIFY_TOKEN` | no | Instagram scraping; feature disabled when blank |
 | `YOUTUBE_API_KEY` | no | YouTube Data API v3 |
@@ -196,8 +250,9 @@ Backend (`backend/.env`, gitignored — `app/core/config.py` is the source of tr
 | `AI_MAX_BRANDS_PER_RUN` | no | default 12 |
 | `AI_MAX_CONCURRENT_CALLS` | no | default 4 |
 | `AI_CACHE_STALE_AFTER_DAYS` | no | default 14; past this a cached AI result is shown as stale |
+| `REVIEW_REVEAL_DAYS` | no | code constant (14) in `deals/reviews.py`, not env — how long a review stays hidden awaiting the other side |
 | `SCRAPE_TTL_DAYS` | no | default 90; Instagram snapshot retention. 0 disables pruning |
-| `REDIS_URL` | no | **read but unused** — kept only as the documented target if the in-process rate limiter is ever swapped for Redis |
+| `REDIS_URL` | no | **read but unused.** The documented target for arq (V2 §2.2) and for a Redis-backed rate limiter. Both deferred to V3 — see `VERSION-2-PLAN.md` |
 | `BCRYPT_ROUNDS` | no | default 12; lower to 11/10 if sign-in feels slow. Existing passwords keep working |
 | `LOGIN_MAX_FAILURES` | no | default 8 failed sign-ins per email+IP before a temporary lockout |
 | `LOGIN_FAILURE_WINDOW_SECONDS` | no | default 900 |

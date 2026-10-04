@@ -12,6 +12,33 @@ Auth column: **None** = no dependency at all · **JWT** = `get_current_user` · 
 
 | Method | Path | Auth | Purpose |
 |---|---|---|---|
+| POST | `/auth/signup` | None | Create BRAND/INFLUENCER. Rejects `role="ADMIN"`. Returns `{access_token, role}` + sets the refresh cookie |
+| POST | `/auth/login` | None | Email+password → access token + refresh cookie |
+| POST | `/auth/google` | None | Verify Google ID token → login, or return a 10-min `setup_token`. The cookie is set **only** on a completed sign-in |
+| POST | `/auth/set-password` | setup_token in body | Set password for a Google-created account → access token + refresh cookie |
+| POST | `/auth/refresh` | refresh cookie | Exchange the cookie for a new access token, rotating the cookie |
+| POST | `/auth/logout` | refresh cookie (optional) | 204 always. Bumps `users.token_version`, revoking every outstanding refresh token |
+
+Notes:
+- **Token types are enforced.** Every token is signed with the same secret, so `get_current_user`
+  requires `type == "access"` — checked positively, so a token with no `type` fails closed. A
+  refresh token cannot authenticate a request, and an access token cannot be redeemed at
+  `/auth/refresh`.
+- **Refresh tokens rotate on every use** and carry a `jti`. Without the `jti` the payload is
+  determined by `(sub, ver, exp)` and `exp` has one-second resolution, so two refreshes in the
+  same second produced a byte-identical token — rotation that rotates nothing.
+- **Revocation is `users.token_version`**, not a denylist. One increment kills every refresh token
+  for that account across every device. Setting a password bumps it too.
+- `/auth/refresh` is in `PUBLIC_PATHS` in `tests/test_authorization.py` — necessarily, since its
+  whole purpose is to work once the access token has expired. It is not unauthenticated: it
+  requires a valid, unrevoked cookie.
+- The cookie is `httpOnly`, with `secure`/`samesite` driven by `ENV`. In production it is a
+  **cross-site** cookie (`crewaa.in` → `onrender.com`), which Safari blocks by default; it
+  degrades to the old bounce-to-`/login` rather than breaking. See `ACTION-REQUIRED.md` §1d.
+- Email is normalised (`lower()`) on both signup and login, and login lockout counts **failures
+  only**, per email+IP.
+
+---|---|---|---|
 | POST | `/auth/signup` | None | Create BRAND/INFLUENCER. Rejects `role="ADMIN"`. Returns `{access_token, token_type, role}` |
 | POST | `/auth/login` | None | Email+password → access token |
 | POST | `/auth/google` | None | Verify Google ID token → login, or return a 10-min `setup_token` |
@@ -139,3 +166,118 @@ This is the only module using a proper `Depends(require_admin)` dependency rathe
 - **CORS [V]:** fixed allowlist of 5 origins in `main.py` (localhost:3000, 127.0.0.1:3000, the Vercel preview, crewaa.in, www.crewaa.in) with `allow_credentials=True` and `allow_methods/headers=["*"]`. Adding an environment requires a code change and redeploy.
 - **No rate limiting, no request-size limit, no idempotency, no pagination outside `/admin/users`, no webhooks, no streaming/SSE/WebSocket.**
 - **Error format** is FastAPI's default `{"detail": ...}`; the frontend axios interceptor reads `error.response.data.detail` and rethrows a plain `Error` **[V]** — which means the original HTTP status is discarded before it reaches the UI, so pages cannot distinguish a 429 from a 500.
+
+---
+
+### Deal terms (V2 §1.2)
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/deals/{interest_id}/terms` | JWT + party to the interest | Current offer, agreed offer, history, and what this viewer may do |
+| POST | `/deals/{interest_id}/terms` | JWT + party | Propose or counter. Countering supersedes the live offer rather than editing it |
+| POST | `/deals/{interest_id}/terms/{offer_id}/accept` | JWT + **recipient only** | Agrees the terms. Irreversible |
+| POST | `/deals/{interest_id}/terms/{offer_id}/decline` | JWT + recipient only | Does not close the negotiation — either side may propose again |
+| POST | `/deals/{interest_id}/terms/{offer_id}/withdraw` | JWT + **proposer only** | Pull your own offer back before a response |
+
+A caller who is not one of the two parties gets **404**, not 403 — the existence of someone
+else's negotiation is not disclosed, matching `/campaigns` and `/messages`.
+
+Responding to an offer that is no longer live returns **409** with a reload instruction; that
+covers the stale-tab case where the other side countered while the page was open.
+
+**Invariants worth knowing before changing this:**
+- Nobody may accept or decline their own offer, or a brand could manufacture an agreement the
+  creator never saw.
+- At most one accepted offer per interest, enforced by the partial unique index
+  `uq_deal_offers_one_accepted` rather than by the handler's read-then-write check.
+- No commission is calculated or returned. See `app/modules/deals/offers.py`.
+
+### Delivery (V2 §1.4)
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/deals/{interest_id}/delivery` | JWT + party | Progress against the agreed terms |
+| POST | `/deals/{interest_id}/delivery` | JWT + **creator only** | Submit a link for one agreed deliverable. Resubmitting supersedes |
+| POST | `/deals/{interest_id}/delivery/{delivery_id}/review` | JWT + **brand only** | Approve, or request changes (a reason is required) |
+
+Roles are asymmetric on purpose: a brand submitting its own deliverable, or a creator approving
+their own, would make the record worthless as proof anything happened. Submissions are immutable.
+Completion is **derived** in `delivery_state()`, never stored.
+
+### Reviews (V2 §1.5)
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/deals/{interest_id}/review` | JWT + party | Your review always; theirs only once revealed |
+| POST | `/deals/{interest_id}/review` | JWT + party | One per person per deal, only after delivery is complete |
+| GET | `/deals/reviews/user/{user_id}` | JWT | Public track record — **revealed reviews only** |
+
+**Double-blind.** A review is hidden until both sides submit or `REVIEW_REVEAL_DAYS` (14) pass.
+A hidden review is deliberately indistinguishable from one that was never written, and hidden
+reviews are excluded from public counts and averages — otherwise an average that moves on
+submission leaks its contents.
+
+---
+
+## Notifications — `/notifications` (V2 §2.1)
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/notifications` | JWT | Most recent 30, newest first |
+| GET | `/notifications/unread-count` | JWT | Counts in SQL — polled by the navbar bell every 45s |
+| POST | `/notifications/read` | JWT | Mark all read; opening the bell is what "read" means |
+| POST | `/notifications/{id}/read` | JWT | Scoped to the caller **in the query**, so someone else's id is a 404 |
+
+Raised by `notify()` on five events: a new message, an offer proposed/countered, an offer
+accepted/declined, a delivery submitted/reviewed, and a review submitted.
+
+- `notify()` **stages on the caller's session and never commits.** The notification and the event
+  must land in one transaction, or someone is told about an offer whose own commit then failed.
+- Notifications go to whoever did **not** act, resolved by `counterpart_id()`.
+- Message notifications **collapse**: a burst on one thread updates the existing *unread* entry
+  rather than adding rows. Read notifications are never collapsed into — something already seen
+  must not change under the reader.
+- The review notification deliberately **never mentions the rating**; that would walk straight
+  through the double-blind.
+
+---
+
+## Trust & safety — `/trust` (V2 Phase 3)
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/trust/block/{interest_id}` | JWT + party | `{blocked, blocked_by_me}` |
+| POST | `/trust/block` | JWT + party | Blocking twice is a success, not an error |
+| POST | `/trust/unblock` | JWT + party | Lifts **your own** block only |
+| POST | `/trust/report` | JWT + party | Returns `{received: true}` and nothing else |
+| GET | `/trust/disputes/{interest_id}` | JWT + party | Both sides see a dispute raised against them |
+| POST | `/trust/disputes/{interest_id}` | JWT + party | 409 if one is already open |
+| GET | `/trust/verification` | JWT | Your own status |
+| POST | `/trust/verification` | JWT | Request review; allowed again after a rejection |
+
+- A block in **either** direction stops messages **both** ways. A one-way block is a mute button
+  that still lets you shout.
+- Blocking never hides or deletes the thread — that conversation is the evidence for any report
+  about it, and a block that erased messages would let you unsay things.
+- The reported person is **never** notified, now or on review.
+- Report and block are separate actions. Bundling them means whoever cannot afford to end a deal
+  never reports at all.
+- A dispute changes **nothing** about the delivery record or the agreed terms.
+- Verification is a **signal, not a gate** — nothing is restricted to verified accounts.
+
+---
+
+## Admin trust queues — `/admin/trust` (V2 Phase 3)
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/admin/trust/reports` | ADMIN | Filter by `?status=`, **oldest first** |
+| GET | `/admin/trust/reports/counts` | ADMIN | Badge counts across all three queues |
+| POST | `/admin/trust/reports/{id}` | ADMIN | reviewed / actioned / dismissed |
+| GET | `/admin/trust/disputes` | ADMIN | Filter by `?status=`, oldest first |
+| POST | `/admin/trust/disputes/{id}` | ADMIN | Resolve or dismiss — **a written outcome is required** |
+| GET | `/admin/trust/verifications` | ADMIN | Pending queue, oldest first |
+| POST | `/admin/trust/verifications/{user_id}` | ADMIN | Approve, or reject **with a reason** |
+
+Oldest-first is deliberate: newest-first buries whatever has waited longest, which is the item
+most likely to concern someone still being harmed. Every resolution records the acting admin.

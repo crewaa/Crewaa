@@ -1,4 +1,5 @@
 from datetime import datetime, timedelta
+from uuid import uuid4
 
 from jose import jwt
 from passlib.context import CryptContext
@@ -74,10 +75,51 @@ async def waste_equivalent_time() -> None:
     """Spend a verify's worth of CPU so a missing account is indistinguishable."""
     await verify_password_async("crewaa-timing-equaliser-not-a-real-password", _DUMMY_HASH)
 
+# Token types. Every token Crewaa issues is signed with the same secret, so the
+# signature alone proves only "we made this" — never "this is the kind of token
+# you are holding". The `type` claim is what separates them, and it is checked
+# on the way in, not merely set on the way out.
+ACCESS_TOKEN_TYPE = "access"
+REFRESH_TOKEN_TYPE = "refresh"
+
+
 def create_access_token(data: dict, expires_minutes: int):
     payload = data.copy()
     # Marks this as a full session token. get_current_user() rejects any token
     # carrying a "purpose" claim, so a setup token can never be used as one.
-    payload["type"] = "access"
+    payload["type"] = ACCESS_TOKEN_TYPE
     payload["exp"] = datetime.utcnow() + timedelta(minutes=expires_minutes)
+    return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)
+
+
+def create_refresh_token(user_id: int, token_version: int, expires_days: int) -> str:
+    """
+    Mint a refresh token: long-lived, and good for exactly one thing — asking
+    for a new access token at POST /auth/refresh.
+
+    It deliberately carries **no role claim**. A refresh token outlives any
+    single session, so a role baked into it would keep asserting whatever the
+    user was when they signed in; an admin demoted to brand would carry admin
+    in their pocket until the token expired. The role is read from the database
+    on every refresh instead.
+
+    `ver` is what makes logout mean something. Without it a refresh token stays
+    valid for its full lifetime no matter what the user does, so "log out" on a
+    shared or stolen machine would clear a cookie the attacker already copied.
+    Bumping `users.token_version` invalidates every refresh token ever issued
+    to that account, in one write.
+    """
+    payload = {
+        "sub": str(user_id),
+        "ver": token_version,
+        "type": REFRESH_TOKEN_TYPE,
+        # A unique id per token. Without it the payload is fully determined by
+        # (sub, ver, exp), and `exp` only has one-second resolution — so a
+        # refresh issued in the same second as the previous one produced a
+        # byte-identical JWT. Rotation that returns the same string is not
+        # rotation: the old cookie keeps working because it *is* the new one.
+        # Caught by test_the_refresh_token_is_rotated_on_use.
+        "jti": uuid4().hex,
+        "exp": datetime.utcnow() + timedelta(days=expires_days),
+    }
     return jwt.encode(payload, settings.jwt_secret_key, algorithm=settings.jwt_algorithm)

@@ -12,6 +12,7 @@ import Link from "next/link"
 import { GoogleAuthButton } from "@/components/auth/google-signup-button"
 import { errorMessage } from "@/lib/types"
 import { SLOW_REQUEST_MESSAGE, useSlowRequestHint } from "@/lib/slow-request"
+import { AuthBrand } from "@/components/auth/auth-brand"
 
 export default function InfluencerSignupPage() {
   const router = useRouter()
@@ -48,6 +49,7 @@ export default function InfluencerSignupPage() {
     <FadeIn>
     <main className="min-h-screen flex items-center justify-center px-6 bg-black">
     <div className="flex flex-col w-full max-w-sm">
+      <AuthBrand />
     <Card className="w-full max-w-sm bg-[#111318] border-white/10 p-8">
       <div className="space-y-2 mb-6">
         <h1 className="text-2xl font-semibold text-white tracking-tight">

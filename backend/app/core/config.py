@@ -96,5 +96,30 @@ class Settings(BaseSettings):
     def cors_origin_list(self) -> list[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
+    # ------------------------------------------------------------------
+    # Refresh-token cookie.
+    #
+    # In production the frontend (crewaa.in, Vercel) and the API (Render) are
+    # on different registrable domains, so the refresh cookie is a *cross-site*
+    # cookie. Browsers only send those with `SameSite=None`, and only accept
+    # `SameSite=None` when `Secure` is also set — hence both, together.
+    #
+    # Locally everything is on localhost, which is same-site, and `Secure`
+    # would stop the cookie being set over plain http. So the two flags move
+    # together with the environment rather than being hardcoded either way.
+    # ------------------------------------------------------------------
+
+    @property
+    def is_local(self) -> bool:
+        return self.env.lower() in ("dev", "local", "test")
+
+    @property
+    def cookie_secure(self) -> bool:
+        return not self.is_local
+
+    @property
+    def cookie_samesite(self) -> str:
+        return "lax" if self.is_local else "none"
+
 
 settings = Settings()

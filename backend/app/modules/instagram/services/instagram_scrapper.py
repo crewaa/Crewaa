@@ -9,6 +9,9 @@ from app.core.logging import logger
 from app.modules.users.models import User, CreatorProfile
 from app.modules.instagram.models.instagram import InstagramProfile, InstagramPost
 from app.modules.instagram.scrapper.scrapper import scrape_instagram
+from app.modules.scraping.errors import (
+    ProfileNotFoundError, ScrapeConfigurationError,
+)
 from app.modules.scraping.models import ScrapePlatform
 from app.modules.scraping.service import track_scrape
 
@@ -102,11 +105,35 @@ async def scrape_and_store(user_id: int):
         try:
             # Call Apify service via scraper
             data = await scrape_instagram(instagram_username)
+        except ScrapeConfigurationError as e:
+            # Our fault — a missing token, or a response shape we cannot read.
+            # Telling the creator to check their Instagram account would be
+            # both wrong and impossible to act on, which is exactly what the
+            # old single catch-all did.
+            logger.error(
+                "Instagram import misconfigured (user {}): {}", user_id, e
+            )
+            await job.fail(
+                "Instagram imports are temporarily unavailable. This is a "
+                "problem on our side — nothing is wrong with your account, "
+                "and we are on it."
+            )
+            return {"status": "error", "message": str(e)}
+        except ProfileNotFoundError as e:
+            logger.warning(
+                "Instagram profile unreadable for user {} (@{}): {}",
+                user_id, instagram_username, e,
+            )
+            await job.fail(
+                f"We could not read @{instagram_username}. Check the username "
+                "is correct and the account is public, then try again."
+            )
+            return {"status": "error", "message": str(e)}
         except Exception as e:
             logger.error("Instagram scraper failed for user {}: {}", user_id, e)
             await job.fail(
-                f"Could not fetch @{instagram_username}. The account may be private, "
-                "renamed, or Instagram may be rate-limiting us. Please try again later."
+                f"Could not fetch @{instagram_username} right now. Instagram "
+                "may be rate-limiting us. Please try again in a few minutes."
             )
             return {"status": "error", "message": str(e)}
 

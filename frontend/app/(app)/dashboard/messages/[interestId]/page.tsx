@@ -5,6 +5,13 @@ import { useParams, useRouter } from "next/navigation"
 import { ArrowLeft, Loader2, Send } from "lucide-react"
 
 import { getThread, markRead, sendMessage, ThreadDetail } from "@/lib/messages"
+import {
+  DealTerms, DeliveryState, ReviewState, getDelivery, getReviews, getTerms,
+} from "@/lib/deal-terms"
+import DealTermsPanel from "@/components/dashboard/deal-terms-panel"
+import DeliveryPanel from "@/components/dashboard/delivery-panel"
+import SafetyMenu, { DisputeBanner } from "@/components/dashboard/safety-menu"
+import { BlockState, Dispute, listDisputes } from "@/lib/trust"
 import { errorMessage } from "@/lib/types"
 import { useToast } from "@/components/ui/toast"
 
@@ -19,8 +26,15 @@ export default function ThreadPage() {
   const toast = useToast()
   const params = useParams<{ interestId: string }>()
   const interestId = Number(params.interestId)
+  const [blockState, setBlockState] = useState<BlockState>({
+    blocked: false, blocked_by_me: false,
+  })
+  const [disputes, setDisputes] = useState<Dispute[]>([])
 
   const [thread, setThread] = useState<ThreadDetail | null>(null)
+  const [terms, setTerms] = useState<DealTerms | null>(null)
+  const [delivery, setDelivery] = useState<DeliveryState | null>(null)
+  const [reviews, setReviews] = useState<ReviewState | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [draft, setDraft] = useState("")
@@ -30,11 +44,25 @@ export default function ThreadPage() {
   useEffect(() => {
     async function load() {
       try {
-        const data = await getThread(interestId)
+        // Both in flight at once — the terms panel and the messages render
+        // together, so serialising them only adds a round trip.
+        // All in flight at once — they render together, so serialising them
+        // only adds round trips. Each deal panel is secondary: a failure in any
+        // of them must not blank the conversation.
+        const [data, dealTerms, dealDelivery, dealReviews] = await Promise.all([
+          getThread(interestId),
+          getTerms(interestId).catch(() => null),
+          getDelivery(interestId).catch(() => null),
+          getReviews(interestId).catch(() => null),
+        ])
         setThread(data)
+        setTerms(dealTerms)
+        setDelivery(dealDelivery)
+        setReviews(dealReviews)
         // Best-effort — an unread badge that doesn't clear is a cosmetic
         // issue, not one worth blocking the page load over.
         markRead(interestId).catch(() => {})
+        listDisputes(interestId).then(setDisputes).catch(() => {})
       } catch (err) {
         setError(errorMessage(err, "Could not load this conversation."))
       } finally {
@@ -99,12 +127,52 @@ export default function ThreadPage() {
 
         {thread && !loading && (
           <>
-            <div className="mb-6 rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-5">
-              <h1 className="text-xl font-semibold text-white">{thread.counterpart.name}</h1>
-              {thread.counterpart.subtitle && (
-                <p className="mt-0.5 text-sm text-gray-500">{thread.counterpart.subtitle}</p>
-              )}
+            <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-5">
+              <div>
+                <h1 className="text-xl font-semibold text-white">{thread.counterpart.name}</h1>
+                {thread.counterpart.subtitle && (
+                  <p className="mt-0.5 text-sm text-gray-500">{thread.counterpart.subtitle}</p>
+                )}
+              </div>
+
+              {/* In the conversation, beside their name — that is where
+                  someone is standing when they decide they need it. */}
+              <SafetyMenu
+                interestId={interestId}
+                counterpartName={thread.counterpart.name}
+                onBlockChange={setBlockState}
+              />
             </div>
+
+            <DisputeBanner disputes={disputes} />
+
+            {terms && (
+              <div className="mb-6">
+                <DealTermsPanel
+                  interestId={interestId}
+                  terms={terms}
+                  onChange={(next) => {
+                    setTerms(next)
+                    // Accepting terms unlocks delivery, so re-read it.
+                    getDelivery(interestId).then(setDelivery).catch(() => {})
+                  }}
+                  counterpartName={thread.counterpart.name}
+                />
+
+                {delivery && reviews && (
+                  <div className="mt-4">
+                    <DeliveryPanel
+                      interestId={interestId}
+                      delivery={delivery}
+                      reviews={reviews}
+                      onDeliveryChange={setDelivery}
+                      onReviewsChange={setReviews}
+                      counterpartName={thread.counterpart.name}
+                    />
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex-1 space-y-3 overflow-y-auto pr-1">
               {thread.messages.length === 0 && (
@@ -138,6 +206,15 @@ export default function ThreadPage() {
             {closed ? (
               <p className="mt-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-gray-500">
                 This interest was withdrawn — the conversation is closed.
+              </p>
+            ) : blockState.blocked ? (
+              // Says which way the block runs. "You cannot send messages" with
+              // no explanation reads as a bug, and the two cases have
+              // different answers: one you can undo, the other you cannot.
+              <p className="mt-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-gray-500">
+                {blockState.blocked_by_me
+                  ? "You blocked this conversation. Unblock from the shield menu to message again."
+                  : `${thread.counterpart.name} has blocked messaging on this deal.`}
               </p>
             ) : (
               <form onSubmit={handleSend} className="mt-6 flex gap-2">

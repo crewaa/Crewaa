@@ -28,3 +28,11 @@ ci.db
 
 # Local walkthrough screenshots — not part of the app
 .walkthrough-shots/
+
+# Creator prospecting database — personal data, never commit.
+# ~884 real creators with names, Instagram handles, cities and
+# contact email/WhatsApp, none of whom are Crewaa users. Committing it
+# would put third-party contact data in git history permanently, which is
+# the same mistake as the leaked Neon credential and just as hard to undo.
+Crewaa_Creator_Database_India.xlsx
+*Creator_Database*.xlsx

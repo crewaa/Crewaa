@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card } from "@/components/ui/card";
 import { useToast } from "@/components/ui/toast";
 import { Instagram, Youtube } from "lucide-react";
+import VerificationCard from "@/components/dashboard/verification-card"
 
 type CreatorProfile = {
   id?: number;
@@ -121,7 +122,11 @@ export default function CreatorProfilePage() {
   if (loading || !profile) return null;
 
   return (
-    <main className="flex min-h-screen items-center justify-center px-6 py-12">
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 py-12">
+      <div className="w-full max-w-2xl">
+        <VerificationCard />
+      </div>
+
       <Card className="w-full max-w-2xl p-8 space-y-6">
         <div>
           <h1 className="text-2xl font-bold">

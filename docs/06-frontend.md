@@ -143,3 +143,47 @@ Tailwind v4 via `@tailwindcss/postcss`, `app/globals.css` holds the design token
 | everywhere | `useState<any>`, no error boundaries, no loading skeletons beyond spinners |
 
 **[V] There are no frontend tests**, no Playwright/Cypress, and `pnpm lint` is the only quality gate.
+
+---
+
+## V2 Phase 2 & 3 surfaces (added 2026-10-04)
+
+### Routes
+
+| Route | What it is |
+|---|---|
+| `/dashboard/admin/trust` | Three admin queues — reports, disputes, verifications — on one page, each oldest-first |
+
+The admin section is guarded by `app/(app)/dashboard/admin/layout.tsx` plus `isRouteAllowed()`,
+which does a `startsWith` on `/dashboard/admin`, so the new sub-route is covered without change.
+As always this is a **UX guard only** — the server is the real boundary.
+
+### Components
+
+| Component | Notes |
+|---|---|
+| `components/dashboard/notification-bell.tsx` | Polls `/notifications/unread-count` every 45s. **Polling, not websockets**: a socket needs a connection per tab held across a free tier that sleeps, to deliver something nobody expects within the second. Polling degrades to "slightly late" instead of "silently disconnected". |
+| `components/dashboard/safety-menu.tsx` | Report / block / dispute, in the thread header beside the counterpart's name — where someone is standing when they decide they need it. Also exports `DisputeBanner`. |
+| `components/dashboard/verification-card.tsx` | On both profile pages. Shows status and offers a request; a rejection shows the admin's reason. |
+| `components/dashboard/payment-status.tsx` | The "coming soon" state shown once terms are agreed. Quotes the agreed figure back and says plainly that Crewaa never holds the money. |
+| `components/auth/auth-brand.tsx` | The lockup above all five auth cards; links home. |
+
+### Auth handling (changed)
+
+`lib/axios.ts` now refreshes silently. On a 401 it calls `/auth/refresh` once and replays the
+request. It is **single-flight** on purpose: a dashboard fires several requests at once, so an
+expired token produces a burst of simultaneous 401s, and because the server rotates the refresh
+token on every use, all but one would be redeemed against an already-superseded token — logging
+the user out at exactly the moment the feature exists to keep them in. `_retried` on the request
+config prevents an infinite loop.
+
+`NO_REFRESH` skips the retry for `/auth/login`, `/auth/signup`, `/auth/google` and `/auth/refresh`,
+where a 401 is the answer rather than a stale session.
+
+### Theming (changed)
+
+`next-themes` is **removed**. `<html>` carries a pinned `dark` class set in `app/layout.tsx`.
+`globals.css` defines the Tailwind variant as `&:is(.dark *)` and `:root` sets a *white*
+`--background`, so previously anyone whose OS was set to light got ~48 `dark:` utilities silently
+not applying inside a hardcoded dark shell. The `app-dark` runtime class dance in `DashboardShell`
+is gone with it; `html { color-scheme: dark }` covers native scrollbars and the overscroll gutter.

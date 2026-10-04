@@ -46,7 +46,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" suppressHydrationWarning>
+    // `dark` is pinned here rather than chosen at runtime. globals.css defines
+    // the Tailwind variant as `&:is(.dark *)` and `:root` sets a white
+    // `--background`, so without this class the ~48 `dark:` utilities across
+    // the dashboard silently do not apply — which is exactly what anyone whose
+    // OS was set to light used to get: light component internals inside a
+    // hardcoded dark shell. Crewaa is dark-only, so the class is a constant,
+    // not a preference. `suppressHydrationWarning` is no longer needed for the
+    // theme (nothing mutates the class now) but is kept for browser extensions
+    // that inject attributes into <html>.
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

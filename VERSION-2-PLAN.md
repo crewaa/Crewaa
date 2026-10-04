@@ -210,17 +210,18 @@ naming now so infra decisions in Phase 1–2 don't foreclose them:
 | # | Question | Decision |
 |---|---|---|
 | 1 | Anonymity in messaging (§1.1) | Reveal immediately on interest — no separate reveal step |
+| 2a | Fee disclosure at acceptance (§1.2) | **Decided 2026-09-26: gross only.** No fee or net figure is shown to a creator when terms are agreed. Must be revisited before §1.3 ships, or creators will agree to a number they do not receive. |
 | 2 | Payment approach (§1.3) | ~~Option B (tracking only)~~ **Revised 2026-08-22: Option C (real payments/escrow)** — required to actually collect commission |
 | 3 | Crewaa's role in the agreement (§1.2) | ~~Record-keeper only~~ **Revised 2026-08-22: Crewaa is a party to the deal**, agency-model, commission 20-25% of value, non-exclusive |
 | 4 | Verification approach (Phase 3) | Manual, via the existing admin console |
 | 5 | Phase order | Confirmed as written: 1 (close the loop) → 2 (infra) → 3 (trust/safety) → 4 (monetization) |
 | 6 | Team/resourcing | Solo build (Vishal + Claude), same as V1 — scope Phase 1 conservatively, one slice at a time |
 | 7 | Escrow legal/compliance (§1.3) | **Open — confirmed 2026-08-22.** Must be checked with a CA/lawyer before any payment/escrow code is written. Does not block messaging. |
-| 8 | Commission threshold (§1.2) | **Open — confirmed 2026-08-22.** 20% vs 25% cutoff not yet set. Does not block messaging. |
+| 8 | Commission threshold (§1.2) | **Open.** 20% vs 25% cutoff not yet set. Did not block §1.2: on 2026-09-26 Vishal chose to record gross fees only and show no commission at all until payment. `commission_rate_pct` is reserved on `deal_offers` and stays null. Blocks §1.3. |
 
 ---
 
-## Status: messaging (§1.1) built and verified. Nothing else in Phase 1 is authorized yet.
+## Status: Phase 1 and Phase 3 complete. Phase 2 complete except the job queue. Phase 4 not started — all three deferred items moved to V3.
 
 2026-08-22: Vishal authorized starting Phase 1, scoped to messaging only. **Messaging is now
 built:**
@@ -240,6 +241,159 @@ built:**
   local dev points at production Neon and the automated coverage was judged sufficient. Worth
   keeping in mind if anything messaging-related looks off in practice.
 
-**Still not authorized:** offers/delivery-tracking/reviews (rest of Phase 1) and payment/escrow.
+### 2026-09-26 — deal terms (§1.2) built
+
+Vishal authorized §1.2. It is built and verified:
+
+- Backend: `app/modules/deals/offers.py` (`DealOffer`), `offer_router.py` (5 endpoints — read
+  terms, propose/counter, accept, decline, withdraw), migration `e7b3d9c45a18`.
+- **Offers are immutable.** Countering writes a new row pointing at the previous one via
+  `supersedes_id` rather than editing it, so the negotiation history survives and `accepted`
+  points at one specific row forever.
+- **One agreed deal per interest is enforced by the database**, not just the handler — a partial
+  unique index (`uq_deal_offers_one_accepted`). A read-then-write check loses a genuine race;
+  two agreed prices on one deal would be unresolvable afterwards.
+- Nobody can respond to their own offer, so an agreement the other side never saw cannot be
+  manufactured.
+- **Commission is deliberately absent** (Vishal's decision, 2026-09-26): Crewaa's 20-25% is not
+  calculated until settlement, and the tier threshold is still open. `commission_rate_pct` exists
+  on the offer and stays null; when payment lands, the rate must be **snapshotted at acceptance**
+  so a later rate change cannot rewrite an agreed deal.
+- Frontend: `components/dashboard/deal-terms-panel.tsx`, rendered inside the existing message
+  thread — negotiating a fee *is* the conversation, so it does not get its own page.
+- Verified: 21 new backend tests (full suite 245/245), 0 typecheck errors, 0 lint errors, and a
+  four-phase browser walkthrough of a real negotiation: brand proposes ₹30,000 → creator counters
+  ₹45,000 → brand accepts → both sides see the same fixed record with the ₹30,000 preserved in
+  history. No JS errors, no 4xx/5xx.
+
+**Open follow-up:** creators are not yet told that a platform fee applies. That is fine while no
+money moves, but it must be resolved *before* payment ships — agreeing ₹45,000 and receiving
+₹33,750 without warning is precisely the "numbers nobody agreed to" failure V1 spent a pass
+eliminating.
+
+### 2026-09-30 — delivery (§1.4) and reviews (§1.5) built
+
+Vishal authorized both. The loop record is now complete end to end:
+**campaign → interest → offer → delivery → review**, with only money outstanding.
+
+**§1.4 delivery** — `app/modules/deals/deliveries.py`, migration `b2f6a8d13c47`.
+- Anchored on the **accepted offer**, not the interest: you deliver against terms that were
+  agreed, and the agreed offer is the only row saying what was owed.
+- Roles are asymmetric — creator submits, brand approves or requests changes. Neither may do
+  the other's job, or the record proves nothing.
+- Submissions are **immutable**; resubmitting supersedes. "You never posted it" versus "I
+  posted it on the 3rd" is settled by a timestamp nobody can edit.
+- A submission's label is validated against the agreed deliverables, so "1x Reel (45s)" cannot
+  be satisfied by something called anything at all.
+- Requesting changes requires a reason — "rejected" with no explanation gives the creator
+  nothing to act on.
+- Completion is **derived from the submissions, never stored**. A `delivered` flag would be a
+  second source of truth that drifts the first time a write fails halfway.
+
+**§1.5 reviews** — `app/modules/deals/reviews.py`, migration `c8e1b47f2a93`.
+- **Double-blind**: neither side sees the other's rating until both submit, or until
+  `REVIEW_REVEAL_DAYS` (14) passes. Whoever goes second could otherwise read their rating and
+  answer in kind, which teaches the first reviewer to under-report problems.
+- The time window matters as much as the blindness: without it, simply never reviewing is a way
+  to suppress a bad rating forever.
+- Hidden reviews are excluded from public counts **and** averages — an average that shifts the
+  moment somebody submits says exactly what they wrote.
+- Gated on delivery being complete: a review written before any work happened rates a
+  conversation, not a track record.
+- One review per person per deal, enforced by a unique constraint rather than a handler check.
+
+Verified: 24 new backend tests (full suite 269), 0 typecheck errors, 0 lint errors, and a
+five-phase browser walkthrough — creator submits, brand approves, second deliverable, deal marks
+Complete, both review. The brand's "Good work, slightly late" stayed hidden until the creator
+submitted theirs, then both revealed. No JS errors, no 4xx/5xx.
+
+**Still not authorized:** payment/escrow (§1.3).
+
 Payment/escrow specifically stays blocked on the compliance check (decision #7) regardless of how
 messaging went. Come back here before picking up the next slice.
+
+---
+
+### 2026-10-04 — Phase 2 (partial) and Phase 3 (complete)
+
+Vishal authorised Phase 2, 3 and 4, then narrowed it after the costs were on the table:
+**payment (§1.3), the job queue (§2.2) and the infra upgrade (§2.4) all move to V3**, and
+Phase 4 is not started at all — his own plan said it was only worth detailed planning once
+there is real usage, and there is not yet.
+
+**Loose ends first (not in the original plan).** Light mode was "half-implemented and visibly
+broken" per `docs/09-product-review.md`, with the toggle removed and `ThemeProvider` left
+mounted. Removing the scaffolding — the obvious reading — would have made it *worse*:
+`globals.css` defines the Tailwind variant as `&:is(.dark *)` and `:root` sets a white
+`--background`, so `.dark` was only ever applied by `next-themes` following the OS preference.
+Anyone on a light OS was already getting ~48 `dark:` utilities silently not applying inside a
+hardcoded dark shell. Fixed by pinning `dark` on `<html>`; `next-themes` and two orphan toggle
+components are gone.
+
+**§1.3 payment — "coming soon" state.** Shown the moment terms are agreed, quoting the agreed
+figure back and stating plainly that money is settled directly and Crewaa never holds it. The
+open follow-up from 2026-09-26 still stands and is now recorded in the component itself: the
+20-25% commission is disclosed nowhere, which is honest while no money moves and becomes a lie
+the moment it does.
+
+**§2.3 refresh tokens — built.** `/auth/refresh`, an httpOnly cookie, rotation on every use, and
+`users.token_version` for revocation (migration `a4d81e37c6b2`). The axios interceptor refreshes
+silently and is single-flight — without that, one expired token produces a burst of simultaneous
+401s, and because the server rotates on use, all but one would redeem an already-superseded token
+and log the user out at exactly the moment the feature exists to keep them in.
+
+Two findings worth recording:
+
+* `get_current_user` checked the setup token's `purpose` claim but never `type`. Every Crewaa
+  token is signed with the same secret, so adding refresh tokens would have made a weeks-long
+  cookie usable as a session credential, invisibly. Fixed first, and checked positively
+  (`== "access"`) so the next token kind fails closed.
+* Rotation was not rotating. The payload was determined by `(sub, ver, exp)` and `exp` has
+  one-second resolution, so a refresh in the same second returned a **byte-identical** token —
+  the old cookie kept working because it *was* the new one. Fixed with a `jti`.
+
+**§2.1 in-app notifications — built.** `notifications` table (migration `b9e5f10a7c43`), four
+endpoints, a navbar bell polling every 45s, and emits on all five events that previously told
+nobody anything. A burst of messages on one thread collapses into a single unread entry rather
+than twenty; the review notification deliberately says nothing about the rating, which would
+otherwise walk straight through the double-blind in §1.5. Email notifications are **not** built —
+still the open half of §2.1.
+
+**Phase 3 — complete.** Migration `c7a3d84f1e09` adds everything in one additive pass.
+
+* **Report & block.** Messaging between strangers shipped in August with neither. A block in
+  *either* direction stops messages *both* ways: a one-way block is a mute button that still
+  lets you shout. Nothing is hidden or deleted — the conversation is the evidence for any report
+  about it. Report and block are separate actions, because bundling them means whoever cannot
+  afford to end a deal never reports at all. The reported person is never notified.
+* **Manual verification** (decision #4). Status lives on `users`, so one column and one queue
+  cover both roles. It is a **signal, not a gate** — gating discovery on it would have silently
+  delisted every existing creator on the day it shipped. A rejection requires a written reason,
+  since the user can reapply.
+* **Dispute flag.** One open dispute per deal, enforced by the partial unique index
+  `uq_deal_disputes_one_open` rather than by the handler. It records a disagreement and changes
+  nothing about the delivery or the agreed terms — a dispute that could edit those would let
+  either party rewrite the evidence the argument is about. Resolving requires a written outcome
+  that both parties can see.
+* **Admin console** at `/dashboard/admin/trust`: three queues, **oldest first** — newest-first
+  buries the item that has waited longest, which is the one most likely to concern someone still
+  being harmed. Every resolution records which admin acted.
+
+**One real bug caught by its own test.** `block` and `raise_dispute` both read `current_user.id`
+*after* `await db.rollback()`. The rollback expires every object in the session, so that read
+triggers a lazy reload outside the async context and raises `MissingGreenlet` — blocking someone
+twice (a double submit, a second tab) would have been a 500 in production. Now CLAUDE.md rule 24.
+
+Verified: 333 backend tests passing (up from 281), 28 migrations still linear, 0 frontend
+typecheck errors, 0 lint errors. **Not verified: `pnpm build` and a browser walkthrough** — the
+committed `node_modules` carries the darwin-arm64 SWC binary, so neither runs in a Linux sandbox.
+
+### Moved to V3
+
+| Item | Why |
+|---|---|
+| §1.3 payment / escrow | RBI Payment Aggregator compliance unchecked (decision #7); commission threshold still open (decision #8); fee disclosure must be resolved first |
+| §2.2 real job queue | Render background workers have no free tier — $7/mo floor. Deferred until transaction volume justifies it |
+| §2.4 off the free tiers | Same call; the stuck-job sweeper and keep-alive pinger remain the stopgaps |
+| Phase 4 (all) | Monetization is not worth detailed planning before there is usage to learn from — as this document already said |
+| Email notifications | The in-app bell covers the floor; email needs a provider account and DNS verification |

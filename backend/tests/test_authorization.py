@@ -19,6 +19,12 @@ from tests.conftest import auth_header, make_brand_profile, make_creator_profile
 PUBLIC_PATHS = {
     "/auth/signup", "/auth/login", "/auth/google", "/auth/set-password",
     "/auth/logout", "/health",
+    # /auth/refresh cannot sit behind get_current_user: its entire purpose is
+    # to be callable once the access token has already expired, which is
+    # precisely when that dependency rejects the request. It is not actually
+    # unauthenticated — it requires a valid, unrevoked refresh cookie, and
+    # test_refresh_tokens.py covers every way that can fail.
+    "/auth/refresh",
 }
 
 

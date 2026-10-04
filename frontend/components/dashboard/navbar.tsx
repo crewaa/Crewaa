@@ -1,13 +1,15 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { BarChart3, Inbox, LayoutGrid, Megaphone, MessageCircle, UserRound } from "lucide-react";
+import { BarChart3, Inbox, LayoutGrid, Megaphone, MessageCircle, ShieldAlert, UserRound } from "lucide-react";
 
 import { fadeSlideUp } from "@/lib/motion";
 import { CurrentUser } from "@/lib/types";
 import { HOME_FOR_ROLE } from "@/lib/session";
+import NotificationBell from "./notification-bell";
 import ProfileDropdown from "./profile-dropdown";
 
 /**
@@ -36,6 +38,7 @@ const NAV: Record<CurrentUser["role"], { href: string; label: string; icon: type
   ADMIN: [
     { href: "/dashboard/admin", label: "Overview", icon: LayoutGrid },
     { href: "/dashboard/admin/users", label: "Users", icon: UserRound },
+    { href: "/dashboard/admin/trust", label: "Trust", icon: ShieldAlert },
   ],
 };
 
@@ -63,9 +66,22 @@ export default function DashboardNavbar({ user }: { user: CurrentUser }) {
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6">
         <button
           onClick={() => router.push(HOME_FOR_ROLE[user.role])}
-          className="rounded-md text-xl font-semibold tracking-tight text-white transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+          aria-label="Go to your dashboard"
+          className="flex items-center rounded-md transition hover:opacity-80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
         >
-          Crewaa
+          {/* The same lockup as the landing navbar, so signing in does not
+              change the brand. `unoptimized` because Next's optimizer rejects
+              SVGs without `dangerouslyAllowSVG`, and a vector gains nothing
+              from raster optimization. */}
+          <Image
+            src="/crewaa-logo-dark.svg"
+            alt="Crewaa"
+            width={108}
+            height={32}
+            priority
+            unoptimized
+            className="h-8 w-auto"
+          />
         </button>
 
         <nav className="flex items-center gap-1" aria-label="Main">
@@ -87,6 +103,8 @@ export default function DashboardNavbar({ user }: { user: CurrentUser }) {
               </Link>
             );
           })}
+
+          <NotificationBell />
 
           <div className="ml-2">
             <ProfileDropdown user={user} />

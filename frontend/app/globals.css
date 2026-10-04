@@ -198,15 +198,14 @@
 
 
 /*
- * Dashboard surface.
+ * Crewaa is dark-only. `<html>` carries a pinned `dark` class (see app/layout.tsx),
+ * so `--background` is already dark on every route and body no longer needs a
+ * per-route override.
  *
- * The (app) route group paints a dark shell, but <body> still carried the light
- * theme token underneath, which showed as a white flash when overscrolling.
- * DashboardShell adds this class while mounted and removes it on unmount, so
- * the marketing and auth pages keep their own background.
+ * `color-scheme` is the part that is not just cosmetic: it tells the browser to
+ * render native scrollbars, form controls, and the overscroll gutter dark. Without
+ * it those stay light and show as white edges against the app.
  */
-html.app-dark,
-html.app-dark body {
-  background-color: #06070C;
+html {
   color-scheme: dark;
 }

@@ -22,6 +22,9 @@ from app.modules.messaging.models import Message
 from app.modules.messaging.schemas import (
     Counterpart, MessageOut, SendMessageRequest, ThreadDetail, ThreadSummary,
 )
+from app.modules.notifications.models import NotificationKind
+from app.modules.trust.service import is_blocked_between
+from app.modules.notifications.service import counterpart_id, notify, thread_link
 from app.modules.users.models import BrandProfile, CreatorProfile, User
 
 router = APIRouter(prefix="/messages", tags=["Messaging"])
@@ -183,8 +186,38 @@ async def send_message(
     if not body:
         raise HTTPException(status.HTTP_400_BAD_REQUEST, "Message cannot be empty")
 
+    # Blocking is checked here, at send, rather than by hiding the thread.
+    # Both sides keep reading everything already said — that conversation is
+    # the evidence for any report filed about it, and letting a block erase it
+    # would mean you could unsay things by blocking whoever you said them to.
+    recipient_id = counterpart_id(interest, current_user.id)
+    if await is_blocked_between(db, current_user.id, recipient_id):
+        raise HTTPException(
+            status.HTTP_403_FORBIDDEN,
+            "Messaging is blocked on this deal. You can still see the "
+            "conversation, but neither of you can send anything new.",
+        )
+
     message = Message(interest_id=interest_id, sender_id=current_user.id, body=body)
     db.add(message)
+
+    # Staged on the same session, committed by the same commit below: a
+    # notification must not be able to exist for a message that failed to save.
+    sender = await _counterpart(db, recipient_id, interest)
+    await notify(
+        db,
+        user_id=recipient_id,
+        kind=NotificationKind.MESSAGE,
+        title=f"New message from {sender.name}",
+        # Truncated, not full: the bell is a prompt to go and read the thread,
+        # and a long message would push every other notification off screen.
+        body=body[:140] + ("…" if len(body) > 140 else ""),
+        link=thread_link(interest_id),
+        interest_id=interest_id,
+        # Ten messages in one conversation are one thing to look at.
+        collapse=True,
+    )
+
     await db.commit()
     await db.refresh(message)
 

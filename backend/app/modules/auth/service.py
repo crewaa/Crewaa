@@ -9,6 +9,8 @@ from app.core.security import (
     verify_password_async,
     waste_equivalent_time,
     create_access_token,
+    create_refresh_token,
+    REFRESH_TOKEN_TYPE,
     SETUP_TOKEN_PURPOSE,
     MIN_PASSWORD_LENGTH,
 )
@@ -145,6 +147,83 @@ def issue_access_token(user: User) -> tuple[str, str]:
     ), user.role
 
 
+def issue_refresh_token(user: User) -> str:
+    """Mint the long-lived companion to an access token."""
+    return create_refresh_token(
+        user_id=user.id,
+        token_version=user.token_version,
+        expires_days=settings.refresh_token_expire_days,
+    )
+
+
+async def refresh_access_token(db: AsyncSession, refresh_token: str | None) -> tuple[str, str, User]:
+    """
+    Exchange a refresh token for a fresh access token.
+
+    Returns `(access_token, role, user)` — the user comes back so the caller can
+    rotate the cookie, and the role is read from the row rather than from the
+    token (see `create_refresh_token` on why the role is not a claim).
+
+    Every failure here answers 401 with the same wording. Distinguishing
+    "expired" from "revoked" from "no cookie" would tell anyone holding a stolen
+    token which of those it is, and there is nothing the legitimate user can do
+    differently in any of those cases anyway: all three mean sign in again.
+    """
+    if not refresh_token:
+        raise HTTPException(401, "Your session has expired. Please log in again.")
+
+    try:
+        payload = jwt.decode(
+            refresh_token,
+            settings.jwt_secret_key,
+            algorithms=[settings.jwt_algorithm],
+        )
+    except JWTError:
+        raise HTTPException(401, "Your session has expired. Please log in again.")
+
+    # An access token must not be redeemable for another access token: that
+    # would turn a token stolen from localStorage into an indefinitely
+    # renewable session, which is the exact thing a short access lifetime is
+    # supposed to prevent.
+    if payload.get("type") != REFRESH_TOKEN_TYPE:
+        raise HTTPException(401, "Your session has expired. Please log in again.")
+
+    try:
+        user_id = int(payload.get("sub", ""))
+    except (TypeError, ValueError):
+        raise HTTPException(401, "Your session has expired. Please log in again.")
+
+    user = (await db.execute(select(User).where(User.id == user_id))).scalar()
+    if not user:
+        raise HTTPException(401, "Your session has expired. Please log in again.")
+
+    # The version check is the revocation. A token minted before the last
+    # logout or password change carries an older number and dies here.
+    if payload.get("ver") != user.token_version:
+        raise HTTPException(401, "Your session has expired. Please log in again.")
+
+    # Checked on refresh, not only at login: a refresh token issued days ago
+    # must stop working the moment an admin disables the account, rather than
+    # renewing happily until it expires on its own.
+    if not user.is_active:
+        raise HTTPException(403, "This account is disabled")
+
+    access_token, role = issue_access_token(user)
+    return access_token, role, user
+
+
+async def revoke_refresh_tokens(db: AsyncSession, user: User) -> None:
+    """
+    Invalidate every refresh token outstanding for this account.
+
+    Used by logout and by any password change. One increment covers tokens on
+    every device, which is the behaviour people expect from "log out" on a
+    machine that is not theirs.
+    """
+    user.token_version += 1
+    await db.commit()
+
+
 async def authenticate_user(db: AsyncSession, email: str, password: str):
     user = await find_user_by_email(db, email)
 
@@ -164,7 +243,14 @@ async def authenticate_user(db: AsyncSession, email: str, password: str):
     return issue_access_token(user)
 
 
-async def google_auth(db, id_token: str, role: str | None):
+async def google_auth(db, id_token: str, role: str | None) -> tuple[dict, User | None]:
+    """
+    Returns `(response_body, user_or_None)`.
+
+    The user is returned only when this call actually signed somebody in. The
+    other two branches hand back a short-lived *setup* token for an account
+    with no password, which is not a session and must not earn a refresh token.
+    """
     payload = await verify_google_token(id_token)
     email = normalise_email(payload["email"])
 
@@ -172,13 +258,21 @@ async def google_auth(db, id_token: str, role: str | None):
 
     # CASE 1: Existing user who already has a password → direct login
     if user and user.hashed_password:
+        if not user.is_active:
+            raise HTTPException(403, "This account is disabled")
         token, role_name = issue_access_token(user)
-        return {"access_token": token, "role": role_name, "needs_password": False}
+        return (
+            {"access_token": token, "role": role_name, "needs_password": False},
+            user,
+        )
 
     # CASE 2: Existing Google-only user (no password yet) → ask them to set one
     if user and not user.hashed_password:
         setup_token = create_setup_token(email=email, role=user.role)
-        return {"needs_password": True, "setup_token": setup_token, "email": email}
+        return (
+            {"needs_password": True, "setup_token": setup_token, "email": email},
+            None,
+        )
 
     # CASE 3: Brand new user → create account, then ask to set password
     if not role:
@@ -203,11 +297,19 @@ async def google_auth(db, id_token: str, role: str | None):
             raise HTTPException(400, "Could not create the account. Please try again.")
 
     setup_token = create_setup_token(email=email, role=role)
-    return {"needs_password": True, "setup_token": setup_token, "email": email}
+    # No user returned: this account has no password yet, so there is no
+    # session to issue a refresh token for.
+    return ({"needs_password": True, "setup_token": setup_token, "email": email}, None)
 
 
 async def set_password_service(db: AsyncSession, setup_token: str, password: str):
-    """Validate the setup token, set the user's password, return a real access token."""
+    """
+    Validate the setup token, set the password, and start a real session.
+
+    Returns `(access_token, role, user)`. The user comes back because the router
+    needs it to mint the refresh token, and re-reading the row there would be a
+    second query for something this function already has in hand.
+    """
     token_data = decode_setup_token(setup_token)
     email = normalise_email(token_data["email"])
 
@@ -231,7 +333,13 @@ async def set_password_service(db: AsyncSession, setup_token: str, password: str
         raise HTTPException(403, "This account is disabled")
 
     user.hashed_password = await hash_password_async(password)
+
+    # Setting a password ends any session that predates it. Nothing should
+    # outlive the moment an account first gains a credential.
+    user.token_version += 1
+
     await db.commit()
     await db.refresh(user)
 
-    return issue_access_token(user)
+    access_token, role = issue_access_token(user)
+    return access_token, role, user
