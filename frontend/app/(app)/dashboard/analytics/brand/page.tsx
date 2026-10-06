@@ -1,13 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getSavedCreators } from "@/lib/user";
 import { useSession } from "@/lib/session";
 import { api } from "@/lib/axios";
-import { BrandProfile, CurrentUser, SavedCreator } from "@/lib/types"
+import { BrandProfile, SavedCreator } from "@/lib/types"
 import { Sparkles } from "lucide-react";
+import { AuthenticityBadge } from "@/components/dashboard/authenticity-badge";
+import { parseApiDate } from "@/lib/time"
 
 // Helper for parsing reasoning gracefully
 const getReasoningText = (reasoning: string | null | undefined) => {
@@ -69,12 +70,12 @@ export default function Analytics() {
     <div className="space-y-10 w-full max-w-7xl mx-auto pb-20">
       
       {/* Brand Profile Snapshot */}
-      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-8 md:p-10">
+      <section className="relative overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-8 md:p-10">
         <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 blur-[100px] rounded-full pointer-events-none" />
         
         <div className="relative z-10 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
           <div className="space-y-2">
-            <h1 className="text-3xl font-bold text-white tracking-tight">
+            <h1 className="text-3xl font-display font-medium text-white">
               {profile?.brand_name || "Your Brand Dashboard"}
             </h1>
             {profile ? (
@@ -143,14 +144,14 @@ export default function Analytics() {
         </div>
 
         {creators.length === 0 ? (
-          <div className="rounded-2xl border border-white/5 bg-[#0E1220]/50 p-12 text-center">
+          <div className="rounded-2xl border border-white/5 bg-peacock-surface/50 p-12 text-center">
             <Sparkles className="mx-auto mb-4 h-8 w-8 text-gray-600" aria-hidden="true" />
             <h3 className="text-lg font-medium text-white mb-2">No creators discovered yet</h3>
             <p className="text-gray-400 max-w-md mx-auto mb-6">
               Use the Discover Creators tool in Brand Studio to let AI find the perfect matches for your upcoming campaigns.
             </p>
             <Link href="/dashboard/brand/discover">
-               <button className="px-6 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-white font-medium transition cursor-pointer shadow-lg shadow-indigo-500/20">
+               <button className="px-6 py-3 rounded-full bg-indigo-600 hover:bg-indigo-500 text-indigo-950 font-medium transition cursor-pointer shadow-lg shadow-indigo-500/20">
                  Find Creators Now
                </button>
             </Link>
@@ -160,13 +161,18 @@ export default function Analytics() {
             {creators.map((creator) => (
               <div 
                 key={creator.id}
-                className="group relative overflow-hidden flex flex-col justify-between rounded-2xl border border-white/10 bg-[#0E1220]/50 p-6 transition-all hover:border-indigo-500/50 hover:bg-[#0E1220]"
+                className="group relative overflow-hidden flex flex-col justify-between rounded-2xl border border-white/10 bg-peacock-surface/50 p-6 transition-all hover:border-indigo-500/50 hover:bg-peacock-surface"
               >
                 <div>
                   <div className="flex justify-between items-start mb-4">
                     <div>
                       <h3 className="text-lg font-semibold text-white">{creator.creator_name || "Unknown Creator"}</h3>
                       <p className="text-sm text-indigo-400">{creator.creator_category || "General"} • {creator.creator_platform || "Instagram"}</p>
+                      {creator.authenticity && (
+                        <div className="mt-2">
+                          <AuthenticityBadge summary={creator.authenticity} />
+                        </div>
+                      )}
                     </div>
                     <span className={`px-2.5 py-1 rounded-full text-[10px] font-medium uppercase tracking-wider border ${fitColors[creator.fit_level] || fitColors["Low"]}`}>
                       {creator.fit_level} FIT
@@ -177,13 +183,13 @@ export default function Analytics() {
                      <p className="text-sm text-gray-400 line-clamp-4 leading-relaxed relative z-10">
                        {getReasoningText(creator.score_reasoning)}
                      </p>
-                     <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-[#0E1220] group-hover:from-transparent to-transparent z-20 transition" />
+                     <div className="absolute bottom-0 left-0 right-0 h-6 bg-gradient-to-t from-peacock-surface group-hover:from-transparent to-transparent z-20 transition" />
                   </div>
                 </div>
                 
                 <div className="pt-4 border-t border-white/10 flex justify-between items-center mt-auto">
                    <span className="text-xs text-gray-500">
-                     Matched on {new Date(creator.saved_at).toLocaleDateString()}
+                     Matched on {parseApiDate(creator.saved_at)?.toLocaleDateString()}
                    </span>
                    <Link href={`/dashboard/brand/creators/${creator.creator_id}`} className="text-xs font-semibold text-white group-hover:text-indigo-400 transition">
                      View Complete Profile →

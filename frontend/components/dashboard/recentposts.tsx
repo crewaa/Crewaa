@@ -1,4 +1,5 @@
 import { Heart, MessageCircle } from "lucide-react"
+import { parseApiDate } from "@/lib/time"
 
 interface InstagramPost {
     id: number
@@ -25,7 +26,7 @@ function RecentPosts({ posts }: { posts: InstagramPost[] }) {
               <div className="flex-1">
                 <p className="text-sm line-clamp-2">{post.caption}</p>
                 <p className="text-xs text-muted-foreground mt-1">
-                  {new Date(post.posted_at).toLocaleString()}
+                  {parseApiDate(post.posted_at)?.toLocaleString() ?? "—"}
                 </p>
               </div>
   

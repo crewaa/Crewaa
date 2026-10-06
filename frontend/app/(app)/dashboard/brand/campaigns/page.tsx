@@ -148,7 +148,7 @@ export default function CampaignsPage() {
 
         <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
           <div>
-            <h1 className="text-4xl font-semibold tracking-tight md:text-5xl">Campaigns</h1>
+            <h1 className="text-4xl font-display font-medium md:text-5xl">Campaigns</h1>
             <p className="mt-3 text-lg text-gray-400">
               What you&apos;re offering, in your words. Creators see these terms exactly
               as you write them.
@@ -156,7 +156,7 @@ export default function CampaignsPage() {
           </div>
           <button
             onClick={() => setShowForm((v) => !v)}
-            className="flex items-center gap-2 rounded-xl bg-white px-5 py-3 text-sm font-medium text-black transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            className="flex items-center gap-2 rounded-xl bg-peacock-teal px-5 py-3 text-sm font-medium text-peacock-on-teal transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
           >
             {showForm ? <X className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
             {showForm ? "Cancel" : "New campaign"}
@@ -166,7 +166,7 @@ export default function CampaignsPage() {
         {showForm && (
           <form
             onSubmit={handleCreate}
-            className="mb-12 space-y-7 rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-6 md:p-8"
+            className="mb-12 space-y-7 rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-6 md:p-8"
           >
             <div>
               <label className="mb-2 block text-sm font-medium text-gray-300">
@@ -387,7 +387,7 @@ export default function CampaignsPage() {
             <button
               type="submit"
               disabled={saving || !form.name || !form.niche}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 py-4 text-lg font-semibold text-white transition hover:from-indigo-500 hover:to-violet-500 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 py-4 text-lg font-semibold text-indigo-950 transition hover:from-indigo-400 hover:to-violet-400 disabled:cursor-not-allowed disabled:opacity-40"
             >
               {saving && <Loader2 className="h-5 w-5 animate-spin" />}
               Create campaign
@@ -414,7 +414,7 @@ export default function CampaignsPage() {
             {campaigns.map((c) => (
               <div
                 key={c.id}
-                className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-6 transition hover:border-white/20"
+                className="rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-6 transition hover:border-white/20"
               >
                 <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
                   <div>

@@ -62,6 +62,8 @@ async def analytics(
         .where(
             InstagramPost.user_id == user_id,
             InstagramPost.scraped_at == profile.scraped_at,
+            # Pinned posts can be months old; "latest posts" means latest.
+            InstagramPost.is_pinned.is_(False),
         )
         .order_by(InstagramPost.posted_at.desc())
         .limit(15)

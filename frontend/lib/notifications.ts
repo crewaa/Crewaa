@@ -1,6 +1,6 @@
 import { api } from "./axios"
 
-export type NotificationKind = "message" | "offer" | "delivery" | "review"
+export type NotificationKind = "message" | "offer" | "delivery" | "review" | "interest" | "crew"
 
 export interface AppNotification {
   id: number

@@ -14,6 +14,8 @@ from app.modules.scraping.errors import (
 )
 from app.modules.scraping.models import ScrapePlatform
 from app.modules.scraping.service import track_scrape
+from app.modules.authenticity.scoring import ContentItem
+from app.modules.authenticity.service import record_audience, update_report
 
 
 async def _prune_old_snapshots(db, user_id: int) -> None:
@@ -180,6 +182,22 @@ async def scrape_and_store(user_id: int):
         await db.commit()
 
         await _prune_old_snapshots(db, user_id)
+
+        # Authenticity (V3 Phase 1). Both calls swallow their own errors: a
+        # scoring problem must never fail an import that already succeeded.
+        followers = data["profile"].get("followers") or 0
+        await record_audience(db, user_id, ScrapePlatform.INSTAGRAM, followers, at=now_utc)
+        recent = sorted(
+            (p for p in data["posts"] if not p.get("is_pinned")),
+            key=lambda p: p.get("posted_at") or now_utc,
+            reverse=True,
+        )
+        await update_report(
+            db, user_id, ScrapePlatform.INSTAGRAM, followers,
+            [ContentItem(likes=p.get("likes") or 0, comments=p.get("comments") or 0,
+                         views=p.get("views"), is_video=bool(p.get("is_video"))) for p in recent],
+            data.get("comment_texts"),
+        )
 
         logger.info("Instagram data stored for user {}", user_id)
         await job.succeed(f"Imported {len(data['posts'])} posts from @{instagram_username}.")

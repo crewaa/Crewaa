@@ -18,15 +18,23 @@ Three things in here matter more than they look:
 """
 
 import json
+import math
 import re
 import uuid
 from typing import Any
 
 from google import genai
 from google.genai import types
+from pydantic import BaseModel, ValidationError
 
 from app.core.config import settings
 from app.core.logging import logger
+from app.modules.ai.llm_schemas import (
+    AnonymousOpportunityOutput,
+    CampaignAssessmentOutput,
+    CreatorProfileOutput,
+    RankingOutput,
+)
 
 
 # =============================================================================
@@ -268,6 +276,32 @@ def extract_json(text: str) -> dict:
     raise ValueError("Unterminated JSON object in LLM output")
 
 
+def parse_structured(raw: str, schema: type[BaseModel]) -> dict:
+    """
+    Validate a model reply against its output schema and return plain data.
+
+    `response_schema` makes Gemini generate the right shape, but the reply is
+    still validated here: the API contract is enforced by the server, not by
+    this process, and a recorded/replayed or stubbed reply bypasses it entirely.
+    Any mismatch is a ValueError — the routers already turn that into an "AI
+    Engine error" rather than a half-built result.
+    """
+    try:
+        return schema.model_validate_json(raw).model_dump()
+    except ValidationError:
+        pass
+    # Fallback for replies wrapped in prose or code fences.
+    try:
+        return schema.model_validate(extract_json(raw)).model_dump()
+    except ValidationError as e:
+        raise ValueError(f"Model reply did not match {schema.__name__}: {e.errors()[:3]}") from e
+
+
+def _normalise(vector: list[float]) -> list[float]:
+    norm = math.sqrt(sum(v * v for v in vector)) or 1.0
+    return [v / norm for v in vector]
+
+
 def _identity_terms(brand_data: dict) -> list[str]:
     """Brand-identifying strings that must never reach the creator."""
     identity = brand_data.get("brand_identity", {})
@@ -348,10 +382,12 @@ class GeminiClient:
         self.model_name = model or settings.gemini_model
         self._client = genai.Client(api_key=api_key)
 
-    def _config(self) -> types.GenerateContentConfig:
+    def _config(self, schema: type[BaseModel] | None = None) -> types.GenerateContentConfig:
         return types.GenerateContentConfig(
             # Every prompt in this module asks for a single JSON object.
             response_mime_type="application/json",
+            # V3: the exact shape is enforced by the API, not just requested.
+            response_schema=schema,
             # HttpOptions takes milliseconds; the setting is in seconds.
             http_options=types.HttpOptions(
                 timeout=settings.gemini_timeout_seconds * 1000
@@ -373,13 +409,13 @@ class GeminiClient:
             )
         return exc
 
-    async def generate(self, prompt: str) -> str:
+    async def generate(self, prompt: str, schema: type[BaseModel] | None = None) -> str:
         """One Gemini call. Natively async — no thread is held for the wait."""
         try:
             response = await self._client.aio.models.generate_content(
                 model=self.model_name,
                 contents=prompt,
-                config=self._config(),
+                config=self._config(schema),
             )
         except Exception as exc:
             translated = self._translate(exc)
@@ -393,6 +429,41 @@ class GeminiClient:
         if not response.text:
             raise ValueError("Gemini returned an empty response")
         return response.text
+
+    async def embed(self, texts: list[str], task_type: str) -> list[list[float]]:
+        """
+        Embed texts for semantic matching (V3 Phase 2).
+
+        `gemini-embedding-001` with an explicit task type: RETRIEVAL_DOCUMENT
+        for what is being searched (creator profiles, campaigns) and
+        RETRIEVAL_QUERY for what is searching. Below 3072 dimensions this model
+        does not normalise its output, so vectors are normalised here — cosine
+        similarity is then a plain dot product.
+        """
+        if not texts:
+            return []
+        try:
+            result = await self._client.aio.models.embed_content(
+                model=settings.gemini_embedding_model,
+                contents=texts,
+                config=types.EmbedContentConfig(
+                    task_type=task_type,
+                    output_dimensionality=settings.embedding_dimensions,
+                    http_options=types.HttpOptions(
+                        timeout=settings.gemini_timeout_seconds * 1000
+                    ),
+                ),
+            )
+        except Exception as exc:
+            translated = self._translate(exc)
+            if translated is exc:
+                raise
+            raise translated from exc
+
+        vectors = [list(e.values or []) for e in (result.embeddings or [])]
+        if len(vectors) != len(texts) or any(not v for v in vectors):
+            raise ValueError("Gemini returned an incomplete embedding batch")
+        return [_normalise(v) for v in vectors]
 
 
 # =============================================================================
@@ -411,8 +482,8 @@ class BrandCreatorRankingEngine:
             brand_data=json.dumps(brand_data, default=str),
             creators_data=json.dumps(creators_data, default=str),
         )
-        raw_response = await self.llm.generate(prompt)
-        return extract_json(raw_response)
+        raw_response = await self.llm.generate(prompt, schema=RankingOutput)
+        return parse_structured(raw_response, RankingOutput)
 
 
 class AnonymousOpportunityEngine:
@@ -427,8 +498,8 @@ class AnonymousOpportunityEngine:
             brand_data=json.dumps(brand_data, default=str),
             creator_data=json.dumps(creator_data, default=str),
         )
-        raw_response = await self.llm.generate(prompt)
-        result = extract_json(raw_response)
+        raw_response = await self.llm.generate(prompt, schema=AnonymousOpportunityOutput)
+        result = parse_structured(raw_response, AnonymousOpportunityOutput)
 
         # Enforce the anonymity promise rather than trusting the instruction.
         result, leaked = scrub_brand_identity(result, brand_data)
@@ -463,8 +534,8 @@ class CampaignOpportunityEngine:
             campaign_data=json.dumps(campaign_data, default=str),
             creator_data=json.dumps(creator_data, default=str),
         )
-        raw = await self.llm.generate(prompt)
-        result = extract_json(raw)
+        raw = await self.llm.generate(prompt, schema=CampaignAssessmentOutput)
+        result = parse_structured(raw, CampaignAssessmentOutput)
 
         # Strip anything the model should not be returning, then scrub identity.
         for forbidden in ("compensation", "budget", "fee", "deliverables",
@@ -492,5 +563,5 @@ class CreatorAIEngine:
             guard=_INJECTION_GUARD,
             creator_data=json.dumps(creator_data, default=str),
         )
-        raw_response = await self.llm.generate(prompt)
-        return extract_json(raw_response)
+        raw_response = await self.llm.generate(prompt, schema=CreatorProfileOutput)
+        return parse_structured(raw_response, CreatorProfileOutput)

@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from app.modules.authenticity.schemas import AuthenticitySummary
 
 class UserResponse(BaseModel):
     id: int
@@ -78,6 +79,7 @@ class SavedCreatorResponse(BaseModel):
     creator_name: str | None = None
     creator_category: str | None = None
     creator_platform: str | None = None
+    authenticity: AuthenticitySummary | None = None
 
     class Config:
         from_attributes = True

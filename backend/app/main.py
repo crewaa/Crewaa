@@ -23,6 +23,10 @@ from app.modules.notifications.router import router as notifications_router
 from app.modules.trust.router import router as trust_router
 from app.modules.trust.admin_router import router as trust_admin_router
 from app.modules.deals.offer_router import router as deal_terms_router
+from app.modules.authenticity.router import router as authenticity_router
+from app.modules.scraping.refresh import router as refresh_router
+from app.modules.waitlist.router import router as waitlist_router
+from app.modules.email.router import router as email_router
 
 
 # Before the app is built, so the ASGI integration wraps everything below.
@@ -144,3 +148,7 @@ app.include_router(deal_terms_router)
 app.include_router(notifications_router)
 app.include_router(trust_router)
 app.include_router(trust_admin_router)
+app.include_router(authenticity_router)
+app.include_router(refresh_router)
+app.include_router(waitlist_router)
+app.include_router(email_router)

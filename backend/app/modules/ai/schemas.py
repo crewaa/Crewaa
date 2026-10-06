@@ -2,6 +2,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, model_validator
 from typing import List, Optional
+from app.modules.authenticity.schemas import AuthenticitySummary
 
 
 class DiscoverCreatorsRequest(BaseModel):
@@ -76,6 +77,8 @@ class RankedCreator(BaseModel):
     avg_comments: int | None = None
     engagement_rate: float | None = None
     is_verified: bool | None = None
+    #: Headline Authenticity Score (V3). Null until the creator has been scored.
+    authenticity: AuthenticitySummary | None = None
 
 
 class DiscoverCreatorsResponse(BaseModel):
@@ -183,6 +186,7 @@ class InterestedCreator(BaseModel):
     youtube_username: str | None = None
     followers: int | None = None
     engagement_rate: float | None = None
+    authenticity: AuthenticitySummary | None = None
     message: str | None = None
     campaign_type: str | None = None
     created_at: datetime
@@ -191,3 +195,28 @@ class InterestedCreator(BaseModel):
 class InterestedCreatorsResponse(BaseModel):
     creators: list[InterestedCreator]
     total: int
+
+
+class CreatorProfileForBrand(BaseModel):
+    """
+    A creator's profile as a brand sees it (V3 Phase 3) — the page behind
+    "View complete profile". Public stats and the Authenticity headline only;
+    contact details stay private until the creator expresses interest.
+    """
+    creator_id: int
+    creator_name: str | None = None
+    category: str | None = None
+    location: str | None = None
+    primary_platform: str | None = None
+    bio: str | None = None
+    instagram_username: str | None = None
+    instagram_url: str | None = None
+    youtube_username: str | None = None
+    youtube_url: str | None = None
+    followers: int | None = None
+    subscribers: int | None = None
+    avg_likes: int | None = None
+    avg_comments: int | None = None
+    engagement_rate: float | None = None
+    is_verified: bool | None = None
+    authenticity: AuthenticitySummary | None = None

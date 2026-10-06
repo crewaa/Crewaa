@@ -6,9 +6,10 @@ import { ArrowLeft, Loader2, MessageCircle } from "lucide-react"
 
 import { listThreads, ThreadSummary } from "@/lib/messages"
 import { errorMessage } from "@/lib/types"
+import { parseApiDate } from "@/lib/time"
 
 function timeAgo(iso: string): string {
-  const diffMs = Date.now() - new Date(iso).getTime()
+  const diffMs = Date.now() - (parseApiDate(iso)?.getTime() ?? Date.now())
   const mins = Math.floor(diffMs / 60_000)
   if (mins < 1) return "just now"
   if (mins < 60) return `${mins}m ago`
@@ -57,7 +58,7 @@ export default function MessagesPage() {
           <ArrowLeft className="h-4 w-4" /> Back to Dashboard
         </button>
 
-        <h1 className="mb-3 text-4xl font-semibold tracking-tight md:text-5xl">Messages</h1>
+        <h1 className="mb-3 text-4xl font-display font-medium md:text-5xl">Messages</h1>
         <p className="mb-10 text-lg text-gray-400">
           Conversations with brands and creators you&apos;ve connected with.
         </p>
@@ -94,7 +95,7 @@ export default function MessagesPage() {
               <button
                 key={t.interest_id}
                 onClick={() => router.push(`/dashboard/messages/${t.interest_id}`)}
-                className="w-full rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-6 text-left transition hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                className="w-full rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-6 text-left transition hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
               >
                 <div className="flex flex-wrap items-start justify-between gap-4">
                   <div className="min-w-0">
@@ -119,7 +120,7 @@ export default function MessagesPage() {
                       <span className="text-xs text-gray-500">{timeAgo(t.last_message_at)}</span>
                     )}
                     {t.unread_count > 0 && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-xs font-medium text-white">
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-xs font-medium text-indigo-950">
                         {t.unread_count}
                       </span>
                     )}

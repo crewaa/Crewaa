@@ -139,7 +139,7 @@ export default function SafetyMenu({
       </button>
 
       {open && panel === "none" && (
-        <div className="absolute right-0 z-40 mt-2 w-60 overflow-hidden rounded-xl border border-white/10 bg-[#0B0D17] shadow-xl">
+        <div className="absolute right-0 z-40 mt-2 w-60 overflow-hidden rounded-xl border border-white/10 bg-peacock-raised shadow-xl">
           <button
             onClick={() => setPanel("report")}
             className="flex w-full items-center gap-2 px-4 py-3 text-left text-sm text-gray-300 transition hover:bg-white/5"
@@ -182,7 +182,7 @@ export default function SafetyMenu({
       {panel === "report" && (
         <form
           onSubmit={submitReport}
-          className="absolute right-0 z-40 mt-2 w-80 rounded-xl border border-white/10 bg-[#0B0D17] p-4 shadow-xl"
+          className="absolute right-0 z-40 mt-2 w-80 rounded-xl border border-white/10 bg-peacock-raised p-4 shadow-xl"
         >
           <h3 className="text-sm font-medium text-white">Report {counterpartName}</h3>
           <p className="mt-1 text-xs leading-relaxed text-gray-500">
@@ -195,7 +195,7 @@ export default function SafetyMenu({
             className="mt-3 w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white focus:border-indigo-500 focus:outline-none"
           >
             {REPORT_REASONS.map((r) => (
-              <option key={r.value} value={r.value} className="bg-[#0B0D17]">
+              <option key={r.value} value={r.value} className="bg-peacock-raised">
                 {r.label}
               </option>
             ))}
@@ -236,7 +236,7 @@ export default function SafetyMenu({
       {panel === "dispute" && (
         <form
           onSubmit={submitDispute}
-          className="absolute right-0 z-40 mt-2 w-80 rounded-xl border border-white/10 bg-[#0B0D17] p-4 shadow-xl"
+          className="absolute right-0 z-40 mt-2 w-80 rounded-xl border border-white/10 bg-peacock-raised p-4 shadow-xl"
         >
           <h3 className="text-sm font-medium text-white">Dispute this deal</h3>
           <p className="mt-1 text-xs leading-relaxed text-gray-500">
@@ -264,7 +264,7 @@ export default function SafetyMenu({
             <button
               type="submit"
               disabled={busy || disputeDetail.trim().length < 10}
-              className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-white transition hover:bg-amber-500 disabled:opacity-50"
+              className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-medium text-amber-950 transition hover:bg-amber-500 disabled:opacity-50"
             >
               {busy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Raise dispute

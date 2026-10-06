@@ -15,16 +15,16 @@ function DashboardShell({ children }: { children: React.ReactNode }) {
 
   return (
     // The app surface is dark at the shell level. Individual pages used to set
-    // their own `bg-[#06070C]` inside a padded, light-background layout, which
+    // their own `bg-peacock-bg` inside a padded, light-background layout, which
     // produced a white header and a white gutter framing a black panel.
-    <div className="min-h-screen bg-[#06070C] text-white">
+    <div className="min-h-screen bg-peacock-bg text-white">
       <DashboardNavbar user={user} />
 
       <motion.main
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 0.2, ease: "easeOut" }}
-        className="min-h-[calc(100vh-4rem)]"
+        className="min-h-[calc(100vh-var(--app-header,4rem))]"
       >
         {children}
       </motion.main>

@@ -11,6 +11,7 @@ from app.modules.instagram.services.instagram_scrapper import scrape_and_store
 from app.modules.youtube.service import scrape_and_store_youtube
 from app.modules.users.completeness import brand_completeness, creator_completeness
 from sqlalchemy import select
+from app.modules.authenticity.service import summaries_for
 
 
 router = APIRouter(prefix="/users", tags=["Users"])
@@ -272,7 +273,8 @@ async def get_saved_creators(
     )
     
     rows = result.all()
-    
+    authenticity = await summaries_for(db, [saved.creator_id for saved, _ in rows])
+
     response = []
     for saved, profile in rows:
         response.append(SavedCreatorResponse(
@@ -285,6 +287,7 @@ async def get_saved_creators(
             creator_name=profile.full_name,
             creator_category=profile.category,
             creator_platform=profile.primary_platform,
+            authenticity=authenticity.get(saved.creator_id),
         ))
         
     return response

@@ -281,3 +281,27 @@ accepted/declined, a delivery submitted/reviewed, and a review submitted.
 
 Oldest-first is deliberate: newest-first buries whatever has waited longest, which is the item
 most likely to concern someone still being harmed. Every resolution records the acting admin.
+
+---
+
+## Version 3 additions (2026-10-06)
+
+| Method | Path | Auth | Notes |
+|---|---|---|---|
+| GET | `/authenticity/{user_id}` | JWT — the creator, brands, admins | Authenticity Score per platform, with every signal. Other creators get 403 |
+| GET | `/instagram/scrape-status/{user_id}` · `/youtube/scrape-status/{user_id}` | JWT + self-or-admin | Latest import status for the freshness bar |
+| GET | `/ai/creators/{creator_id}` | JWT + BRAND/ADMIN | A creator's profile as a brand sees it: public stats + Authenticity headline, **no contact details** |
+| POST | `/waitlist` | **None** (rate-limited 5/h per IP) | AI Influencers waitlist. Idempotent; same answer for new and known emails. First sign-up stages a confirmation email |
+| GET | `/admin/waitlist` | ADMIN | Newest first, up to 1,000 |
+| GET | `/email/preferences` | JWT | `{messages, deals, crew, email_enabled}`; no row = all on |
+| PUT | `/email/preferences` | JWT | Partial update |
+| POST | `/email/unsubscribe?token=` | **Signed token** (no session) | One-click unsubscribe (RFC 8058 target). POST-only so link scanners can't trigger it. `category` = messages / deals / crew / all |
+| POST | `/internal/refresh-stale` | `X-Cron-Secret` | Queues re-imports of the stalest creators. 404 while `CRON_SECRET` is unset |
+| POST | `/internal/send-emails` | `X-Cron-Secret` | Sends emails still waiting in the outbox. 404 while `CRON_SECRET` is unset |
+
+Changed in V3: `POST /ai/opportunities/interest` now notifies the brand (in-app + email) the first
+time a creator expresses interest. Ranked creators, saved creators and interested creators carry an
+`authenticity` summary.
+
+The routes allowed to have no user session are listed, with reasons, in `PUBLIC_PATHS` in
+`backend/tests/test_authorization.py`; that test fails if any other route lacks an auth dependency.

@@ -19,13 +19,15 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useRouter } from "next/navigation"
 import { AnimatePresence, motion } from "framer-motion"
 import {
-  Bell, CheckCheck, Handshake, MessageCircle, PackageCheck, Star,
+  Bell, CheckCheck, Handshake, MessageCircle, PackageCheck, Settings, Sparkles, Star, Wrench,
 } from "lucide-react"
+import Link from "next/link"
 
 import {
   AppNotification, NotificationKind, listNotifications,
   markAllNotificationsRead, markNotificationRead, unreadNotificationCount,
 } from "@/lib/notifications"
+import { parseApiDate } from "@/lib/time"
 
 //: Slow enough to be nearly free, quick enough that a reply during a live
 //: negotiation shows up while the conversation is still happening.
@@ -36,10 +38,12 @@ const ICONS: Record<NotificationKind, typeof Bell> = {
   offer: Handshake,
   delivery: PackageCheck,
   review: Star,
+  interest: Sparkles,
+  crew: Wrench,
 }
 
 function relativeTime(iso: string): string {
-  const seconds = Math.max(0, (Date.now() - new Date(iso).getTime()) / 1000)
+  const seconds = Math.max(0, (Date.now() - (parseApiDate(iso)?.getTime() ?? Date.now())) / 1000)
   if (seconds < 60) return "just now"
   const minutes = Math.floor(seconds / 60)
   if (minutes < 60) return `${minutes}m ago`
@@ -140,7 +144,7 @@ export default function NotificationBell() {
         <Bell className="h-4 w-4" />
         {unread > 0 && (
           <span
-            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-500 px-1 text-[10px] font-semibold text-white"
+            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-indigo-500 px-1 text-[10px] font-semibold text-indigo-950"
             // The badge already carries the count in the button's aria-label,
             // so repeating it here would make a screen reader say it twice.
             aria-hidden="true"
@@ -157,7 +161,7 @@ export default function NotificationBell() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -6 }}
             transition={{ duration: 0.15 }}
-            className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/10 bg-[#0B0D17] shadow-xl"
+            className="absolute right-0 z-50 mt-2 w-80 overflow-hidden rounded-xl border border-white/10 bg-peacock-raised shadow-xl"
           >
             <div className="flex items-center justify-between border-b border-white/10 px-4 py-3">
               <span className="text-sm font-medium text-white">Notifications</span>
@@ -206,6 +210,14 @@ export default function NotificationBell() {
                   )
                 })}
             </div>
+
+            <Link
+              href="/dashboard/settings"
+              onClick={() => setOpen(false)}
+              className="flex items-center gap-2 border-t border-white/10 px-4 py-2.5 text-xs text-gray-400 transition hover:bg-white/5 hover:text-white"
+            >
+              <Settings className="h-3.5 w-3.5" aria-hidden /> Email settings
+            </Link>
           </motion.div>
         )}
       </AnimatePresence>

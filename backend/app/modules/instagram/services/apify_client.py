@@ -66,9 +66,13 @@ def _scrape_instagram_creator_sync(username: str) -> dict:
 
     client = ApifyClient(settings.apify_token)
 
+    # A `resultsLimit` used to be sent here too. It is not an input of this
+    # actor (it belongs to the general Instagram scraper) and was silently
+    # ignored, so the post count was never what this code implied (V3 Phase 1
+    # audit). The actor returns the profile's ~12 latest posts, pinned included;
+    # pinned ones are flagged and excluded downstream.
     run_input = {
         "usernames": [username],
-        "resultsLimit": 12,
         "proxy": {"useApifyProxy": True},
     }
 

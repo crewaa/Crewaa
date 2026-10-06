@@ -1,4 +1,5 @@
 import { api } from "./axios"
+import type { AuthenticitySummary } from "./authenticity"
 
 /**
  * Rank creators for a campaign.
@@ -120,5 +121,31 @@ export async function withdrawInterest(opportunityId: string) {
 
 export async function getInterestedCreators() {
   const res = await api.get("/ai/interested-creators")
+  return res.data
+}
+
+/** A creator's public profile as a brand sees it — no contact details. */
+export interface CreatorProfileForBrand {
+  creator_id: number
+  creator_name: string | null
+  category: string | null
+  location: string | null
+  primary_platform: string | null
+  bio: string | null
+  instagram_username: string | null
+  instagram_url: string | null
+  youtube_username: string | null
+  youtube_url: string | null
+  followers: number | null
+  subscribers: number | null
+  avg_likes: number | null
+  avg_comments: number | null
+  engagement_rate: number | null
+  is_verified: boolean | null
+  authenticity: AuthenticitySummary | null
+}
+
+export async function getCreatorForBrand(creatorId: number): Promise<CreatorProfileForBrand> {
+  const res = await api.get(`/ai/creators/${creatorId}`)
   return res.data
 }

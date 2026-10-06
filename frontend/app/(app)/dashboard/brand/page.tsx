@@ -22,7 +22,7 @@ export default function BrandStudio() {
 
       {/* Content */}
       <main className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6">
-        <h1 className="text-5xl md:text-6xl font-semibold tracking-tight">
+        <h1 className="text-5xl md:text-6xl font-display font-medium">
           Brand Studio
         </h1>
         <p className="mt-4 text-lg text-gray-400">
@@ -78,17 +78,21 @@ export default function BrandStudio() {
           />
 
           <AICard
-            title="AI Influencer"
-            description="Create AI-powered virtual influencers tailored to your brand, ready to front campaigns without relying on a human creator."
+            title="AI Influencers"
+            description="Create an AI influencer with your brand's look and voice, and produce content whenever you need it."
             badge="Coming Soon"
-            accent="indigo"
+            accent="ai"
+            action="See what's coming"
+            href="/dashboard/ai-influencers"
           />
 
           <AICard
             title="AI Marketing Suite"
-            description="Run intelligent, data-driven marketing campaigns with AI — from content strategy to performance optimization."
+            description="Content ideas, captions, ad copy, content calendars and growth reports, in one place."
             badge="Coming Soon"
-            accent="cyan"
+            accent="suite"
+            action="See what's coming"
+            href="/dashboard/marketing-suite"
           />
         </div>
       </main>

@@ -176,3 +176,16 @@ export async function submitReview(
   const res = await api.post(`/deals/${interestId}/review`, { rating, comment })
   return res.data
 }
+
+/** A user's track record: revealed reviews only (GET /deals/reviews/user/{id}). */
+export interface PublicReviews {
+  user_id: number
+  average_rating?: number | null
+  review_count: number
+  reviews: Review[]
+}
+
+export async function getPublicReviews(userId: number): Promise<PublicReviews> {
+  const res = await api.get(`/deals/reviews/user/${userId}`)
+  return res.data
+}

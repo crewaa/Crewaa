@@ -1,0 +1,60 @@
+# Keeps creator data fresh (V3 Phase 1) without paid infrastructure.
+#
+# Every 6 hours this asks the backend to re-import the creators whose data is
+# oldest (at most REFRESH_BATCH_SIZE per run, default 5). The backend does the
+# work; this job only knocks on the door.
+#
+# It also sends any notification emails still waiting (V3 Phase 4) — normally
+# they go out seconds after the event; this catches anything held back by a
+# restart, a Resend outage or the daily limit.
+#
+# Needs two repository secrets (Settings → Secrets and variables → Actions):
+#   CREWAA_API_URL  e.g. https://api.crewaa.in   (no trailing slash)
+#   CRON_SECRET     the same value as CRON_SECRET on Render
+# Until both exist, the job exits quietly instead of failing.
+
+name: Refresh creator data and send waiting emails
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"   # 00:17, 06:17, 12:17, 18:17 UTC
+  workflow_dispatch: {}       # "Run workflow" button for a manual refresh
+
+permissions: {}
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Ask the backend to refresh stale creators
+        env:
+          API_URL: ${{ secrets.CREWAA_API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "CREWAA_API_URL / CRON_SECRET not set — skipping."
+            exit 0
+          fi
+          # A sleeping free-tier instance can take ~1 minute to wake, hence the
+          # long timeout and retries.
+          curl --fail-with-body --silent --show-error \
+               --max-time 120 --retry 3 --retry-delay 20 --retry-all-errors \
+               -X POST "$API_URL/internal/refresh-stale" \
+               -H "X-Cron-Secret: $CRON_SECRET"
+          echo
+
+      - name: Send any notification emails still waiting
+        env:
+          API_URL: ${{ secrets.CREWAA_API_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$API_URL" ] || [ -z "$CRON_SECRET" ]; then
+            echo "CREWAA_API_URL / CRON_SECRET not set — skipping."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error \
+               --max-time 120 --retry 3 --retry-delay 20 --retry-all-errors \
+               -X POST "$API_URL/internal/send-emails" \
+               -H "X-Cron-Secret: $CRON_SECRET"
+          echo

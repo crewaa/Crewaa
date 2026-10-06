@@ -25,6 +25,20 @@ PUBLIC_PATHS = {
     # unauthenticated — it requires a valid, unrevoked refresh cookie, and
     # test_refresh_tokens.py covers every way that can fail.
     "/auth/refresh",
+    # Called by the GitHub Actions schedule, not a person, so it cannot carry a
+    # user token. Protected by CRON_SECRET (constant-time compare) and absent
+    # (404) when no secret is set — see tests/test_refresh_stale.py.
+    "/internal/refresh-stale",
+    # Marketing-site waitlist (V3 Phase 3): anyone may join, by design. Rate-
+    # limited per IP, idempotent, and gives the same answer for new and known
+    # emails, so it reveals nothing — see tests/test_waitlist.py.
+    "/waitlist",
+    # One-click unsubscribe from an email (V3 Phase 4). Authorised by the HMAC-
+    # signed token in the link instead of a session — someone reading email on
+    # their phone is usually not signed in. See tests/test_email.py.
+    "/email/unsubscribe",
+    # Scheduled email retry; same CRON_SECRET guard as /internal/refresh-stale.
+    "/internal/send-emails",
 }
 
 

@@ -143,7 +143,7 @@ jobs:
         # — that way a real credential pasted into a README still fails.
         run: |
           set +e
-          PATTERNS='postgres(ql)?(\+[a-z0-9]+)?://[^:]+:[^@]+@|AIzaSy[0-9A-Za-z_-]{20,}|apify_api_[0-9A-Za-z]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
+          PATTERNS='postgres(ql)?(\+[a-z0-9]+)?://[^:]+:[^@]+@|AIzaSy[0-9A-Za-z_-]{20,}|apify_api_[0-9A-Za-z]{20,}|re_[0-9A-Za-z]{8}_[0-9A-Za-z]{20,}|-----BEGIN [A-Z ]*PRIVATE KEY-----'
           PLACEHOLDERS='USER:PASSWORD|user:password|postgres:password|USERNAME:PASSWORD|<[^>]*>|\$\{|CHANGEME|changeme|xxx+|\.\.\.'
           MATCHES=$(grep -rInE "$PATTERNS" . \
             --exclude-dir=.git \

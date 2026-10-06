@@ -25,8 +25,8 @@ export default function GlobalError({
   }, [error])
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-[#06070C] px-6 text-center text-white">
-      <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+    <main className="flex min-h-screen flex-col items-center justify-center bg-peacock-bg px-6 text-center text-white">
+      <h1 className="text-3xl font-display font-medium md:text-4xl">
         Something went wrong
       </h1>
       <p className="mt-4 max-w-md text-gray-400">
@@ -40,7 +40,7 @@ export default function GlobalError({
       )}
       <button
         onClick={reset}
-        className="mt-10 rounded-xl bg-white px-6 py-3 font-medium text-black transition hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+        className="mt-10 rounded-xl bg-peacock-teal px-6 py-3 font-medium text-peacock-on-teal transition hover:brightness-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
       >
         Try again
       </button>
