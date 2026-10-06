@@ -28,6 +28,10 @@ os.environ.setdefault("GOOGLE_CLIENT_ID", "test-client-id.apps.googleusercontent
 # the 5k/month quota. Tests that need a live client build their own (see
 # tests/test_observability.py) — no test may ever use the real one.
 os.environ["SENTRY_DSN"] = ""
+# Same reasoning for email (V3 Phase 4): a real RESEND_API_KEY in backend/.env
+# must never let a test send mail. Tests that exercise delivery set a key on
+# `settings` and pass a fake sender.
+os.environ["RESEND_API_KEY"] = ""
 
 import pytest  # noqa: E402
 import pytest_asyncio  # noqa: E402

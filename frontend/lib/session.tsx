@@ -15,6 +15,7 @@ import { usePathname, useRouter } from "next/navigation"
 
 import { getCurrentUser } from "./user"
 import { CurrentUser, Role } from "./types"
+import { partPrefixesForRole } from "./parts"
 
 interface SessionValue {
   user: CurrentUser | null
@@ -50,10 +51,13 @@ const SHARED_PREFIXES = [
   "/dashboard/brand-profile",
   "/dashboard/analytics",
   "/dashboard/messages",
+  "/dashboard/settings",
 ]
 
 export function isRouteAllowed(role: Role, pathname: string): boolean {
   if (SHARED_PREFIXES.some((p) => pathname.startsWith(p))) return true
+  // V3 parts (Grow, AI Influencers, Marketing Suite, Crew) are role-specific.
+  if (partPrefixesForRole(role).some((p) => pathname === p || pathname.startsWith(p + "/"))) return true
   return pathname.startsWith(HOME_FOR_ROLE[role])
 }
 

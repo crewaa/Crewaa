@@ -10,7 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { LogOut, User } from "lucide-react";
+import { LogOut, Settings, User } from "lucide-react";
 import { logout } from "../../lib/auth";
 
 interface Props {
@@ -65,6 +65,11 @@ export default function ProfileDropdown({ user }: Props) {
         )}>
           <User className="mr-2 h-4 w-4" />
           {user.role === "ADMIN" ? "Admin Console" : "Profile"}
+        </DropdownMenuItem>
+
+        <DropdownMenuItem onClick={() => router.push("/dashboard/settings")}>
+          <Settings className="mr-2 h-4 w-4" />
+          Email settings
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />

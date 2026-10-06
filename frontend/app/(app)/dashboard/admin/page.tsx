@@ -79,7 +79,7 @@ export default function AdminDashboard() {
         <div className="mb-12">
           <div className="flex items-center gap-3 mb-2">
             <ShieldCheck className="h-8 w-8 text-indigo-400" />
-            <h1 className="text-4xl md:text-5xl font-semibold tracking-tight">
+            <h1 className="text-4xl md:text-5xl font-display font-medium">
               Admin Console
             </h1>
           </div>
@@ -103,7 +103,7 @@ export default function AdminDashboard() {
             {statCards.map((card) => (
               <div
                 key={card.label}
-                className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl group"
+                className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-6 transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl group"
               >
                 {/* Accent glow */}
                 <div className={`absolute top-0 right-0 h-32 w-32 rounded-full ${card.glow} blur-[60px] opacity-60`} />
@@ -130,7 +130,7 @@ export default function AdminDashboard() {
         <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           <button
             onClick={() => router.push("/dashboard/admin/users")}
-            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black px-8 py-10 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl cursor-pointer"
+            className="group relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep px-8 py-10 text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-2xl cursor-pointer"
           >
             <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/20 via-indigo-400/10 to-transparent" />
             <div className="relative z-10">
@@ -145,7 +145,7 @@ export default function AdminDashboard() {
             </div>
           </button>
 
-          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black px-8 py-10 text-left">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep px-8 py-10 text-left">
             <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/20 via-cyan-400/10 to-transparent" />
             <div className="relative z-10">
               <Palette className="h-8 w-8 text-cyan-400 mb-4" />
@@ -159,7 +159,7 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black px-8 py-10 text-left">
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep px-8 py-10 text-left">
             <div className="absolute inset-0 bg-gradient-to-br from-amber-500/20 via-amber-400/10 to-transparent" />
             <div className="relative z-10">
               <Building2 className="h-8 w-8 text-amber-400 mb-4" />

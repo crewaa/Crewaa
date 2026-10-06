@@ -36,6 +36,10 @@ class NotificationKind:
     OFFER = "offer"
     DELIVERY = "delivery"
     REVIEW = "review"
+    #: A creator expressed interest in a brand's opportunity (V3 Phase 4).
+    INTEREST = "interest"
+    #: Crewaa Crew request updates (V3 Phase 5).
+    CREW = "crew"
 
 
 class Notification(Base):

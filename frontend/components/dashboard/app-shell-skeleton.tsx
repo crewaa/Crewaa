@@ -7,7 +7,7 @@
  */
 export function AppShellSkeleton() {
   return (
-    <div className="min-h-screen bg-[#06070C]" aria-busy="true" aria-live="polite">
+    <div className="min-h-screen bg-peacock-bg" aria-busy="true" aria-live="polite">
       <span className="sr-only">Loading your dashboard…</span>
 
       {/* Navbar placeholder */}

@@ -131,9 +131,9 @@ export default function BrandProfilePage() {
           <VerificationCard />
         </div>
 
-        <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-8 space-y-6">
+        <div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-8 space-y-6">
           <div>
-            <h1 className="text-2xl font-bold">
+            <h1 className="text-2xl font-display font-medium">
               {profile.id ? "Edit Brand Profile" : "Setup Brand Profile"}
             </h1>
             <p className="text-sm text-gray-400 mt-2">
@@ -161,7 +161,7 @@ export default function BrandProfilePage() {
                 name="industry_field"
                 defaultValue={profile.industry}
                 required
-                className="w-full bg-[#0E1220] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500/50"
+                className="w-full bg-peacock-surface border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500/50"
               >
                 <option value="">Select industry</option>
                 {INDUSTRY_OPTIONS.map((i) => (
@@ -200,7 +200,7 @@ export default function BrandProfilePage() {
                 <select
                   name="campaign_goal"
                   defaultValue={profile.campaign_goal}
-                  className="w-full bg-[#0E1220] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500/50"
+                  className="w-full bg-peacock-surface border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500/50"
                 >
                   <option value="Awareness">Awareness</option>
                   <option value="Sales">Sales</option>
@@ -212,7 +212,7 @@ export default function BrandProfilePage() {
                 <select
                   name="budget_range"
                   defaultValue={profile.budget_range}
-                  className="w-full bg-[#0E1220] border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500/50"
+                  className="w-full bg-peacock-surface border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:border-indigo-500/50"
                 >
                   <option value="Low">Low</option>
                   <option value="Mid">Mid</option>

@@ -42,7 +42,7 @@ pip install -e .
 
 uvicorn app.main:app --reload
 
-uvicorn appp.main:app --host 0.0.0.0 --port 8001
+uvicorn app.main:app --host 0.0.0.0 --port 8001
 
 ```
 

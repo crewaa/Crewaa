@@ -1,23 +1,26 @@
-import { LandingPageNavbar } from "@/components/landing-page/navbar";
-import { LandingPageHeroSection } from "@/components/landing-page/hero";
-import { LandingPageFeaturesSection } from "../../components/landing-page/features";
-import { HowItWorksSection } from "../../components/landing-page/how-it-works";
-import { LandingPageFooter } from "../../components/landing-page/footer";
-import WhatIsCrewaa from "../../components/landing-page/what-is-crewaa";
-import ValueCards from "../../components/landing-page/value-cards";
-import SectionGlow from "../../components/landing-page/section-glow";
+import type { Metadata } from "next"
+
+import { Hero } from "@/components/site/home/hero"
+import { Parts } from "@/components/site/home/parts"
+import { FinalCta, GrowBand, Marquee, Sides, Timeline, Trust } from "@/components/site/home/sections"
+
+export const metadata: Metadata = {
+  title: { absolute: "Crewaa — brands, businesses and creators. One crew." },
+  description:
+    "Find verified creators with an Authenticity Score, run brand collaborations end to end, and soon grow your business online, launch AI influencers and hire editors and writers. Built for India.",
+}
 
 export default function LandingPage() {
   return (
-    <>
-    <LandingPageNavbar></LandingPageNavbar>
-    <LandingPageHeroSection></LandingPageHeroSection>
-    <SectionGlow></SectionGlow>
-    <WhatIsCrewaa></WhatIsCrewaa>
-    <ValueCards></ValueCards>
-    <LandingPageFeaturesSection></LandingPageFeaturesSection>
-    <HowItWorksSection></HowItWorksSection>
-    <LandingPageFooter></LandingPageFooter>
-    </>
+    <main>
+      <Hero />
+      <Marquee />
+      <Parts />
+      <Trust />
+      <Sides />
+      <Timeline />
+      <GrowBand />
+      <FinalCta />
+    </main>
   )
 }

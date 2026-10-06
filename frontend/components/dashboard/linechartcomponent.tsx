@@ -1,5 +1,6 @@
 import { ResponsiveContainer } from "recharts"
 import { LineChart, XAxis, YAxis, Tooltip, Line } from "recharts"
+import { parseApiDate } from "@/lib/time"
 
 
 /**
@@ -35,7 +36,7 @@ function LineChartComponent({
           dataKey={dateKey}
           tickFormatter={(v) => {
             try {
-              return new Date(v).toLocaleDateString()
+              return parseApiDate(String(v))?.toLocaleDateString() ?? ""
             } catch {
               return v
             }
@@ -49,7 +50,7 @@ function LineChartComponent({
           labelFormatter={(v) => {
             if (typeof v !== "string" && typeof v !== "number") return v
             try {
-              return new Date(v).toLocaleString()
+              return parseApiDate(String(v))?.toLocaleString() ?? ""
             } catch {
               return v
             }
@@ -60,7 +61,7 @@ function LineChartComponent({
           type="monotone"
           dataKey={dataKey}
           strokeWidth={2}
-          stroke="#3b82f6"
+          stroke="#26BDB0"
         />
       </LineChart>
     </ResponsiveContainer>

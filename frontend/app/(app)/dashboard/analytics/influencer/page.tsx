@@ -1,14 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import InstagramAnalytics from "@/components/dashboard/instagram-analytics";
 import YouTubeAnalytics from "@/components/dashboard/youtube-analytics";
-import { CurrentUser } from "@/lib/types"
 import { Instagram, Youtube } from "lucide-react";
+import { AuthenticityCard } from "@/components/dashboard/authenticity-card";
 
 export default function Analytics() {
   const { user } = useSession();
@@ -19,10 +19,10 @@ export default function Analytics() {
   if (!user) return null;
 
   return (
-    <main className="flex-1 space-y-8">
+    <main className="mx-auto max-w-7xl flex-1 space-y-8 p-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+          <h1 className="text-3xl font-display font-medium">Analytics Dashboard</h1>
           <p className="text-gray-600 dark:text-gray-400 mt-2">
             Track your social media performance and growth
           </p>
@@ -34,6 +34,8 @@ export default function Analytics() {
           Edit Profile
         </Button>
       </div>
+
+      <AuthenticityCard userId={user.id} />
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2">

@@ -12,9 +12,10 @@ import {
 import { errorMessage } from "@/lib/types"
 import {
   Users, Search, Plus, Trash2, Eye, ChevronLeft, ChevronRight, Check,
-  X, Loader2, ShieldCheck,
+  X, Loader2,
 } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
+import { parseApiDate } from "@/lib/time"
 
 type RoleFilter = "" | "INFLUENCER" | "BRAND"
 
@@ -160,7 +161,7 @@ export default function AdminUsersPage() {
                 ← Back
               </button>
             </div>
-            <h1 className="text-3xl font-semibold tracking-tight flex items-center gap-3">
+            <h1 className="text-3xl font-display font-medium flex items-center gap-3">
               <Users className="h-7 w-7 text-indigo-400" />
               User Management
             </h1>
@@ -227,7 +228,7 @@ export default function AdminUsersPage() {
         </div>
 
         {/* Table */}
-        <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead>
@@ -312,7 +313,7 @@ export default function AdminUsersPage() {
                         )}
                       </td>
                       <td className="px-6 py-4 text-sm text-gray-400">
-                        {new Date(user.created_at).toLocaleDateString(undefined, {
+                        {parseApiDate(user.created_at)?.toLocaleDateString(undefined, {
                           year: "numeric", month: "short", day: "numeric",
                         })}
                       </td>
@@ -373,7 +374,7 @@ export default function AdminUsersPage() {
       {/* Delete Confirmation Modal */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0E1220] p-8">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-peacock-surface p-8">
             <h2 className="text-xl font-semibold mb-2">Delete User</h2>
             <p className="text-gray-400 mb-2">
               Are you sure you want to delete this user? This action is <span className="text-red-400 font-medium">irreversible</span>.
@@ -418,7 +419,7 @@ export default function AdminUsersPage() {
       {/* Create User Modal */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0E1220] p-8">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-peacock-surface p-8">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-xl font-semibold">Add New User</h2>
               <button

@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/components/ui/toast"
 import { errorMessage } from "@/lib/types"
+import { parseApiDate } from "@/lib/time"
 
 export default function AdminUserDetailPage() {
   const router = useRouter()
@@ -107,7 +108,7 @@ export default function AdminUserDetailPage() {
         </div>
 
         {/* User Header Card */}
-        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black mb-8">
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep mb-8">
           <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/10 via-transparent to-transparent" />
           <div className="relative z-10 p-8">
             <div className="flex flex-col md:flex-row md:items-center gap-6">
@@ -118,7 +119,7 @@ export default function AdminUserDetailPage() {
 
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2 flex-wrap">
-                  <h1 className="text-2xl font-semibold">
+                  <h1 className="text-2xl font-display font-medium">
                     {user.role === "INFLUENCER" && user.creator_full_name
                       ? user.creator_full_name
                       : user.role === "BRAND" && user.brand_name
@@ -148,7 +149,7 @@ export default function AdminUserDetailPage() {
                 </div>
                 <div className="flex items-center gap-2 text-gray-500 text-sm mt-1">
                   <Calendar className="h-4 w-4" />
-                  Joined {new Date(user.created_at).toLocaleDateString(undefined, {
+                  Joined {parseApiDate(user.created_at)?.toLocaleDateString(undefined, {
                     year: "numeric", month: "long", day: "numeric",
                   })}
                 </div>
@@ -159,7 +160,7 @@ export default function AdminUserDetailPage() {
 
         {/* Creator Profile Details */}
         {user.role === "INFLUENCER" && (
-          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black overflow-hidden">
+          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep overflow-hidden">
             <div className="border-b border-white/10 px-8 py-5">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <UserRound className="h-4 w-4 text-cyan-400" /> Creator Profile
@@ -206,7 +207,7 @@ export default function AdminUserDetailPage() {
 
         {/* Brand Profile Details */}
         {user.role === "BRAND" && (
-          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black overflow-hidden">
+          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep overflow-hidden">
             <div className="border-b border-white/10 px-8 py-5">
               <h2 className="text-lg font-semibold flex items-center gap-2">
                 <Building2 className="h-4 w-4 text-amber-400" /> Brand Profile
@@ -250,7 +251,7 @@ export default function AdminUserDetailPage() {
 
         {/* Admin user — no profile */}
         {user.role === "ADMIN" && (
-          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black p-8 text-center">
+          <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-8 text-center">
             <ShieldCheck className="h-12 w-12 text-emerald-400 mx-auto mb-4" />
             <h2 className="text-lg font-semibold mb-2">Admin Account</h2>
             <p className="text-gray-400">
@@ -263,7 +264,7 @@ export default function AdminUserDetailPage() {
       {/* Delete Modal */}
       {showDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#0E1220] p-8">
+          <div className="w-full max-w-md rounded-2xl border border-white/10 bg-peacock-surface p-8">
             <h2 className="text-xl font-semibold mb-2">Delete User</h2>
             <p className="text-gray-400 mb-4">
               This will permanently delete <span className="text-white font-medium">{user.email}</span> and all associated data.

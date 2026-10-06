@@ -57,6 +57,8 @@ export interface SavedCreator {
   creator_name?: string | null
   creator_category?: string | null
   creator_platform?: string | null
+  /** Headline Authenticity Score (V3). */
+  authenticity?: import("./authenticity").AuthenticitySummary | null
 }
 
 /** Outcome of the most recent background scrape, from `/…/scrape-status/{id}`. */

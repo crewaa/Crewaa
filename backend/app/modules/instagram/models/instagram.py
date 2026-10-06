@@ -1,4 +1,4 @@
-from sqlalchemy import String, Boolean, ForeignKey, DateTime, Text, Integer
+from sqlalchemy import String, Boolean, ForeignKey, DateTime, Text, Integer, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from datetime import datetime
 from app.core.database import Base
@@ -34,6 +34,10 @@ class InstagramPost(Base):
     views: Mapped[int | None] = mapped_column(Integer, nullable=True)
     caption: Mapped[str | None] = mapped_column(Text, nullable=True)
     posted_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    #: Pinned posts sit at the top of a profile however old they are. They are
+    #: kept for display but excluded from every average and from the AI, which
+    #: is one of the causes of "sometimes old data" fixed in V3 Phase 1.
+    is_pinned: Mapped[bool] = mapped_column(Boolean, default=False, server_default=text("false"), nullable=False)
     scraped_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
     user: Mapped["User"] = relationship(back_populates="instagram_posts")

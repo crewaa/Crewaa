@@ -23,7 +23,7 @@ export default function InfluencerStudio() {
 
       {/* Content */}
       <main className="relative z-10 flex min-h-screen flex-col items-center justify-center px-6">
-        <h1 className="text-5xl md:text-6xl font-semibold tracking-tight">
+        <h1 className="text-5xl md:text-6xl font-display font-medium">
           Creator Studio
         </h1>
         <p className="mt-4 text-lg text-gray-400">
@@ -67,11 +67,21 @@ export default function InfluencerStudio() {
           />
 
           <AICard
-            title="Creator Support"
-            description="Soon, creators will be able to collaborate with Crewaa's professional team for end-to-end
-            content creation and execution."
+            title="Crewaa Crew"
+            description="Video editors, script writers and designers from our in-house team and vetted freelancers. Hand off the work you don't want to do."
             badge="Coming Soon"
-            accent="amber"
+            accent="crew"
+            action="See what's coming"
+            href="/dashboard/crew"
+          />
+
+          <AICard
+            title="AI Marketing Suite"
+            description="Captions, content ideas, a content calendar and growth reports from your real data."
+            badge="Coming Soon"
+            accent="suite"
+            action="See what's coming"
+            href="/dashboard/marketing-suite"
           />
         </div>
       </main>

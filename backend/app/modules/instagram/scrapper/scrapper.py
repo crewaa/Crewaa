@@ -5,6 +5,8 @@ from app.modules.instagram.services.apify_client import scrape_instagram_creator
 from app.modules.scraping.errors import ScrapeError, ScrapeUpstreamError
 
 POST_LIMIT = 15
+#: Comments kept in memory per post for the authenticity check. Never stored.
+COMMENTS_PER_POST = 10
 
 
 async def scrape_instagram(username: str) -> Dict[str, Any]:
@@ -40,27 +42,40 @@ async def scrape_instagram(username: str) -> Dict[str, Any]:
         
         # Map posts data - Apify returns latestPosts array
         posts_data = []
+        comment_texts: list[str] = []
         posts = raw_data.get("latestPosts", []) or raw_data.get("posts", [])
-        
+
         if posts and isinstance(posts, list):
             for post in posts[:POST_LIMIT]:
                 try:
+                    # Likes can come back as -1 when the creator hides them.
+                    likes = int(post.get("likesCount") or post.get("likeCount") or 0)
+                    views = post.get("videoViewCount") or post.get("videoPlayCount")
                     posts_data.append({
                         "shortcode": post.get("shortCode", "") or post.get("id", ""),
-                        "likes": int(post.get("likesCount") or post.get("likeCount") or 0),
-                        "comments": int(post.get("commentsCount") or 0),
+                        "likes": max(likes, 0),
+                        "comments": max(int(post.get("commentsCount") or 0), 0),
                         "is_video": post.get("type") == "Video" or post.get("isVideo", False),
-                        "views": int(post.get("videoViewCount")) if post.get("videoViewCount") else None,
+                        "views": int(views) if views else None,
                         "caption": post.get("caption", "") or post.get("text", ""),
                         "posted_at": post.get("timestamp") or post.get("date"),
+                        "is_pinned": bool(post.get("isPinned", False)),
                     })
                 except (KeyError, ValueError, TypeError) as e:
                     logger.warning("Error parsing Instagram post: {}", e)
                     continue
-        
+
+                if post.get("isPinned"):
+                    continue
+                for c in (post.get("latestComments") or [])[:COMMENTS_PER_POST]:
+                    if isinstance(c, dict) and isinstance(c.get("text"), str):
+                        comment_texts.append(c["text"])
+
         return {
             "profile": profile_data,
             "posts": posts_data,
+            # In memory only — see app/modules/authenticity/comments.py.
+            "comment_texts": comment_texts,
         }
         
     except ScrapeError:

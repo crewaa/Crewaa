@@ -14,9 +14,10 @@ import SafetyMenu, { DisputeBanner } from "@/components/dashboard/safety-menu"
 import { BlockState, Dispute, listDisputes } from "@/lib/trust"
 import { errorMessage } from "@/lib/types"
 import { useToast } from "@/components/ui/toast"
+import { parseApiDate } from "@/lib/time"
 
 function formatTime(iso: string): string {
-  return new Date(iso).toLocaleString(undefined, {
+  return (parseApiDate(iso) ?? new Date()).toLocaleString(undefined, {
     month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
   })
 }
@@ -96,7 +97,7 @@ export default function ThreadPage() {
   const closed = thread?.interest_status !== "interested"
 
   return (
-    <div className="relative flex h-[calc(100vh-4rem)] flex-col overflow-hidden">
+    <div className="relative flex h-[calc(100vh-var(--app-header,4rem))] flex-col overflow-hidden">
       <div className="absolute inset-0 -z-10">
         <div className="absolute top-[-20%] left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-indigo-500/15 blur-[160px]" />
       </div>
@@ -127,7 +128,7 @@ export default function ThreadPage() {
 
         {thread && !loading && (
           <>
-            <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-5">
+            <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-5">
               <div>
                 <h1 className="text-xl font-semibold text-white">{thread.counterpart.name}</h1>
                 {thread.counterpart.subtitle && (
@@ -185,7 +186,7 @@ export default function ThreadPage() {
                   <div
                     className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
                       m.is_mine
-                        ? "bg-indigo-600 text-white"
+                        ? "bg-indigo-600 text-indigo-950"
                         : "border border-white/10 bg-white/5 text-gray-200"
                     }`}
                   >
@@ -229,7 +230,7 @@ export default function ThreadPage() {
                 <button
                   type="submit"
                   disabled={sending || !draft.trim()}
-                  className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                  className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-medium text-indigo-950 transition hover:bg-indigo-500 disabled:opacity-50"
                 >
                   {sending ? (
                     <Loader2 className="h-4 w-4 animate-spin" />

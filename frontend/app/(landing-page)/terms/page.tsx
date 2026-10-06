@@ -8,15 +8,15 @@ export const metadata: Metadata = {
 
 export default function TermsPage() {
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="mx-auto max-w-3xl px-6 py-20">
+    <main className="min-h-screen bg-peacock-bg text-white">
+      <div className="mx-auto max-w-3xl px-6 pt-32 pb-20">
 
         {/* Back */}
         <Link href="/" className="text-sm text-gray-500 hover:text-white transition-colors mb-10 inline-block">
           ← Back to home
         </Link>
 
-        <h1 className="text-4xl font-bold tracking-tight mb-2">Terms of Service</h1>
+        <h1 className="text-4xl font-display font-medium mb-2">Terms of Service</h1>
         <p className="text-sm text-gray-500 mb-12">Last updated: April 2025</p>
 
         <div className="space-y-10 text-gray-300 leading-relaxed">

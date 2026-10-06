@@ -4,10 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/lib/session";
 import { getCreatorSummary, getCachedCreatorSummary } from "@/lib/ai";
-import { Button } from "@/components/ui/button";
-import { CurrentUser } from "@/lib/types"
 import { errorMessage } from "@/lib/types"
 import { Clapperboard, ClipboardList, Clock, RotateCw, Sparkles, Tag, Target, TrendingUp, type LucideIcon } from "lucide-react";
+import { parseApiDate } from "@/lib/time"
 
 interface CreatorSummary {
   generated_at?: string | null;
@@ -37,7 +36,7 @@ export default function GrowthAnalyzerPage() {
         if (cached) {
           setSummary(cached);
         }
-      } catch (err) {
+      } catch {
         // Safe to ignore cache miss
       }
     }
@@ -77,7 +76,7 @@ export default function GrowthAnalyzerPage() {
           >
             ← Back
           </button>
-          <h1 className="text-5xl md:text-6xl font-semibold tracking-tight">
+          <h1 className="text-5xl md:text-6xl font-display font-medium">
             AI Growth Analyzer
           </h1>
           <p className="mt-4 text-lg text-gray-400">
@@ -90,12 +89,12 @@ export default function GrowthAnalyzerPage() {
           <button
             onClick={handleAnalyze}
             disabled={loading}
-            className="rounded-full bg-white px-10 py-4 text-base font-semibold text-black hover:bg-gray-100 transition disabled:opacity-50 disabled:cursor-not-allowed"
+            className="rounded-full bg-peacock-teal px-10 py-4 text-base font-semibold text-peacock-on-teal hover:brightness-110 transition disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center gap-3">
                 <svg
-                  className="animate-spin h-5 w-5 text-black"
+                  className="animate-spin h-5 w-5 text-peacock-on-teal"
                   xmlns="http://www.w3.org/2000/svg"
                   fill="none"
                   viewBox="0 0 24 24"
@@ -126,14 +125,14 @@ export default function GrowthAnalyzerPage() {
                 <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 This analysis is from{" "}
                 {summary.generated_at
-                  ? new Date(summary.generated_at).toLocaleDateString()
+                  ? parseApiDate(summary.generated_at)?.toLocaleDateString()
                   : "a while ago"}{" "}
                 and may not reflect your current numbers. Re-analyse for a fresh view.
               </p>
             )}
             {/* Summary Card */}
             {summary.summary && (
-              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black p-8">
+              <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-8">
                 <h2 className="mb-3 flex items-center gap-2 text-xl font-semibold text-cyan-400"><ClipboardList className="h-5 w-5" /> Profile Summary</h2>
                 <p className="text-gray-300 leading-relaxed text-base">{summary.summary}</p>
               </div>
@@ -212,7 +211,7 @@ function SectionCard({
   Icon: LucideIcon;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black p-6">
+    <div className="rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-6">
       <h2 className={`mb-4 flex items-center gap-2 text-lg font-semibold ${accentClass}`}>
         <Icon className="h-5 w-5" /> {title}
       </h2>

@@ -20,6 +20,8 @@ from app.core.logging import logger
 from app.modules.users.models import User, CreatorProfile, BrandProfile, SavedCreator
 from app.modules.campaigns.models import Campaign, CampaignStatus
 from app.modules.deals.models import InterestStatus, OpportunityInterest
+from app.modules.notifications.models import NotificationKind
+from app.modules.notifications.service import notify
 from app.modules.instagram.models.instagram import InstagramProfile, InstagramPost
 from app.modules.youtube.models import YouTubeChannel, YouTubeVideo
 from app.modules.ai.schemas import (
@@ -29,9 +31,18 @@ from app.modules.ai.schemas import (
     BrandDealsResponse,
     BrandDealOpportunity,
     CreatorSummaryResponse,
+    CreatorProfileForBrand,
     InterestRequest,
     InterestedCreator,
     InterestedCreatorsResponse,
+)
+from app.modules.authenticity.service import summaries_for
+from app.modules.authenticity.models import AuthenticityReport
+from app.modules.authenticity.schemas import AuthenticitySummary
+from app.modules.ai.metrics import authenticity_for_model, instagram_metrics, youtube_metrics
+from app.modules.ai.matching import (
+    apply_authenticity_guard, campaign_document, campaign_query, creator_document,
+    niche_location_bonus, semantic_order,
 )
 from app.modules.ai.ai_service import (
     AnonymousOpportunityEngine,
@@ -75,11 +86,28 @@ async def _build_creator_payloads(
         .order_by(InstagramProfile.scraped_at.desc())
     )).scalars().all()
 
-    ig_posts = (await db.execute(
-        select(InstagramPost)
-        .where(InstagramPost.user_id.in_(user_ids))
-        .order_by(InstagramPost.posted_at.desc())
-    )).scalars().all()
+    # Ordered desc, so the first entry per user is the newest snapshot.
+    latest_ig: dict[int, InstagramProfile] = {}
+    for p in ig_profiles:
+        latest_ig.setdefault(p.user_id, p)
+
+    # Posts from the *latest* snapshot only, pinned posts excluded.
+    #
+    # This used to load posts across every stored snapshot (kept for
+    # SCRAPE_TTL_DAYS) and take the ten newest by `posted_at` — so the same post
+    # appeared several times, each copy carrying the like count from a different
+    # scrape. The AI saw older numbers than the analytics screen, which filters
+    # to the latest snapshot: the "sometimes latest, sometimes old data" bug
+    # (V3 Phase 1 audit). Pinned posts made it worse, being old by definition.
+    latest_scrape = {uid: p.scraped_at for uid, p in latest_ig.items()}
+    ig_posts = [
+        post for post in (await db.execute(
+            select(InstagramPost)
+            .where(InstagramPost.user_id.in_(user_ids), InstagramPost.is_pinned.is_(False))
+            .order_by(InstagramPost.posted_at.desc())
+        )).scalars().all()
+        if latest_scrape.get(post.user_id) == post.scraped_at
+    ]
 
     yt_channels = (await db.execute(
         select(YouTubeChannel)
@@ -92,11 +120,6 @@ async def _build_creator_payloads(
         .where(YouTubeVideo.user_id.in_(user_ids))
         .order_by(YouTubeVideo.published_at.desc())
     )).scalars().all()
-
-    # Ordered desc, so the first entry per user is the newest snapshot.
-    latest_ig: dict[int, InstagramProfile] = {}
-    for p in ig_profiles:
-        latest_ig.setdefault(p.user_id, p)
 
     latest_yt: dict[int, YouTubeChannel] = {}
     for c in yt_channels:
@@ -111,6 +134,14 @@ async def _build_creator_payloads(
     for v in yt_videos:
         if len(videos_by_user[v.user_id]) < 10:
             videos_by_user[v.user_id].append(v)
+
+    # Authenticity reports, one query for everyone (V3 Phase 2).
+    auth_rows = (await db.execute(
+        select(AuthenticityReport).where(AuthenticityReport.user_id.in_(user_ids))
+    )).scalars().all()
+    auth_by_user: dict[int, list] = defaultdict(list)
+    for r in auth_rows:
+        auth_by_user[r.user_id].append(r)
 
     payloads: dict[int, dict] = {}
 
@@ -156,6 +187,8 @@ async def _build_creator_payloads(
                     }
                     for p in creator_posts[:5]
                 ],
+                # Computed in code, with benchmarks — the model judges, it does not count.
+                "computed": instagram_metrics(ig_profile.followers, creator_posts, ig_profile.scraped_at),
             })
 
         if yt_channel:
@@ -176,6 +209,7 @@ async def _build_creator_payloads(
                     }
                     for v in creator_videos[:5]
                 ],
+                "computed": youtube_metrics(yt_channel.subscribers, creator_videos, yt_channel.scraped_at),
             })
 
         payloads[uid] = {
@@ -184,9 +218,12 @@ async def _build_creator_payloads(
                 "name": creator.full_name,
                 "primary_niche": creator.category,
                 "location": creator.location,
-                "pricing": "Mid",  # TODO: no real pricing model exists yet
+                # A hard-coded `"pricing": "Mid"` used to sit here — an invented
+                # fact sent to the model for every creator. Removed in V3; there
+                # is no pricing data to send until creators can state rates.
             },
             "platforms": platforms,
+            "authenticity": authenticity_for_model(auth_by_user.get(uid, [])),
         }
 
     return payloads
@@ -635,9 +672,9 @@ async def discover_creators(
     # a floor cannot be applied in this query. Over-fetch instead, filter once
     # the payloads are built, then truncate — otherwise the SQL limit would cut
     # the pool down before the floor had a chance to remove anyone.
-    fetch_limit = settings.ai_max_creators_per_prompt
-    if min_followers:
-        fetch_limit = min(fetch_limit * 3, 200)
+    # V3: a wider pool than the prompt holds. Semantic pre-matching below picks
+    # the best AI_MAX_CREATORS_PER_PROMPT of it for the model.
+    fetch_limit = max(settings.ai_candidate_pool, settings.ai_max_creators_per_prompt)
 
     creators_query = creators_query.limit(fetch_limit)
 
@@ -671,6 +708,23 @@ async def discover_creators(
             # could not be met.
             follower_floor_relaxed = True
 
+    # Semantic pre-match (V3 Phase 2): most relevant first, by meaning rather
+    # than exact niche string. Falls back to the SQL order above on any failure.
+    query_text = campaign_query(brand_data)
+    if brand_profile and brand_profile.description:
+        query_text += f"\nAbout the brand: {brand_profile.description[:300]}"
+    ordered = await semantic_order(
+        db,
+        kind="creator",
+        query_text=query_text,
+        items=creators,
+        doc_for=lambda c: creator_document(c, payloads.get(c.user_id, {})),
+        id_for=lambda c: c.user_id,
+        bonus_for=niche_location_bonus(niche or brand_data["brand_identity"].get("industry"), target_location),
+    )
+    if ordered is not None:
+        creators = ordered
+
     creators = creators[: settings.ai_max_creators_per_prompt]
     creators_data = [payloads[c.user_id] for c in creators]
 
@@ -692,6 +746,9 @@ async def discover_creators(
         # Log the detail server-side; do not echo raw upstream errors to the client.
         logger.error("Creator ranking failed for brand {}: {}", current_user.id, e)
         raise HTTPException(500, "AI Engine error. Please try again.")
+
+    # Authenticity headlines for the whole shortlist, one query (V3).
+    authenticity = await summaries_for(db, list(valid_creator_ids))
 
     # Parse result
     ranked = []
@@ -758,7 +815,12 @@ async def discover_creators(
             ),
             **stats,
         ))
-        
+        summary = authenticity.get(c_id_int)
+        ranked[-1].authenticity = AuthenticitySummary(**summary) if summary else None
+        # Enforced in code, not by the prompt: low authenticity is never a High fit.
+        apply_authenticity_guard([ranked[-1]], authenticity)
+        fit_level = ranked[-1].fit_level
+
         # Save or update the creator connection in the DB
         if c_id_int in existing_saved:
             existing = existing_saved[c_id_int]
@@ -774,6 +836,9 @@ async def discover_creators(
             db.add(new_saved)
             
     await db.commit()
+
+    # High fits first, keeping the model's order within each level.
+    ranked = apply_authenticity_guard(ranked, {})
 
     recommendation = result.get("final_recommendation")
     if follower_floor_relaxed:
@@ -828,7 +893,7 @@ async def get_cached_brand_deals(
     )
 
 async def _brand_deal_sources(
-    db: AsyncSession, creator: CreatorProfile
+    db: AsyncSession, creator: CreatorProfile, creator_data: dict | None = None
 ) -> tuple[list[Campaign], list[BrandProfile]]:
     """
     Choose what to assess, most relevant first.
@@ -857,6 +922,8 @@ async def _brand_deal_sources(
     # the model never has to invent commercial terms. Brands that have not
     # created a campaign yet still appear, via the legacy profile-derived path,
     # but their terms are flagged as estimates.
+    # V3 Phase 2: fetch a wider pool and keep the campaigns closest in meaning
+    # to this creator. Falls back to the niche/recency order on any failure.
     campaigns = list((await db.execute(
         select(Campaign)
         .where(
@@ -864,8 +931,23 @@ async def _brand_deal_sources(
             Campaign.is_open_to_applications.is_(True),
         )
         .order_by(*campaign_order)
-        .limit(settings.ai_max_brands_per_run)
+        .limit(max(settings.ai_candidate_pool, settings.ai_max_brands_per_run))
     )).scalars().all())
+
+    if creator_data is not None and len(campaigns) > settings.ai_max_brands_per_run:
+        niche = (creator.category or "").strip().lower()
+        ordered = await semantic_order(
+            db,
+            kind="campaign",
+            query_text=creator_document(creator, creator_data),
+            items=campaigns,
+            doc_for=campaign_document,
+            id_for=lambda c: c.id,
+            bonus_for=lambda c: 0.15 if niche and (c.niche or "").strip().lower() == niche else 0.0,
+        )
+        if ordered is not None:
+            campaigns = ordered
+    campaigns = campaigns[: settings.ai_max_brands_per_run]
 
     remaining = settings.ai_max_brands_per_run - len(campaigns)
     legacy_brands = []
@@ -1010,7 +1092,7 @@ async def generate_brand_deals(
         raise HTTPException(404, "Please complete your creator profile first")
 
     creator_data = await _build_creator_payload(current_user.id, creator, db)
-    campaigns, legacy_brands = await _brand_deal_sources(db, creator)
+    campaigns, legacy_brands = await _brand_deal_sources(db, creator, creator_data)
 
     if not campaigns and not legacy_brands:
         return BrandDealsResponse(opportunities=[], total=0)
@@ -1089,7 +1171,7 @@ async def stream_brand_deals(
                 return
 
             creator_data = await _build_creator_payload(current_user.id, creator, db)
-            campaigns, legacy_brands = await _brand_deal_sources(db, creator)
+            campaigns, legacy_brands = await _brand_deal_sources(db, creator, creator_data)
 
             produced: list[tuple] = []
             try:
@@ -1197,11 +1279,15 @@ async def express_interest(
         )
     )).scalar()
 
+    # Tell the brand once per expression of interest — not again when the
+    # creator merely edits their note on an interest that is already live.
+    newly_interested = existing is None or existing.status != InterestStatus.INTERESTED
     if existing:
         existing.status = InterestStatus.INTERESTED
         existing.message = request.message
+        interest = existing
     else:
-        db.add(OpportunityInterest(
+        interest = OpportunityInterest(
             creator_id=current_user.id,
             brand_id=match["brand_id"],
             campaign_id=match.get("campaign_id"),
@@ -1209,7 +1295,24 @@ async def express_interest(
             status=InterestStatus.INTERESTED,
             opportunity_snapshot=json.dumps(match["opportunity"]),
             message=request.message,
-        ))
+        )
+        db.add(interest)
+
+    if newly_interested:
+        await db.flush()  # for interest.id
+        campaign_type = (match["opportunity"].get("campaign_type") or "").strip()
+        what = f"your {campaign_type.lower()} campaign" if campaign_type else "your campaign"
+        name = (creator.full_name or "A creator").strip()
+        await notify(
+            db,
+            user_id=interest.brand_id,
+            kind=NotificationKind.INTEREST,
+            title=f"{name} is interested in {what}"[:160],
+            body=(request.message or "").strip()[:200]
+                 or "See their profile, Authenticity Score and message in Responses.",
+            link="/dashboard/brand/interested",
+            interest_id=interest.id,
+        )
 
     await db.commit()
     logger.info(
@@ -1275,6 +1378,7 @@ async def list_interested_creators(
 
     profiles = [profile for _, _, profile in rows]
     payloads = await _build_creator_payloads(profiles, db)
+    authenticity = await summaries_for(db, [p.user_id for p in profiles])
 
     creators = []
     for interest, user, profile in rows:
@@ -1296,9 +1400,54 @@ async def list_interested_creators(
             youtube_username=profile.youtube_username,
             followers=stats.get("followers"),
             engagement_rate=stats.get("engagement_rate"),
+            authenticity=authenticity.get(profile.user_id),
             message=interest.message,
             campaign_type=campaign_type,
             created_at=interest.created_at,
         ))
 
     return InterestedCreatorsResponse(creators=creators, total=len(creators))
+
+
+@router.get("/creators/{creator_id}", response_model=CreatorProfileForBrand)
+async def get_creator_for_brand(
+    creator_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """
+    One creator's public profile for a brand (V3 Phase 3).
+
+    "View complete profile" on the brand dashboard linked here for months to a
+    page that did not exist. Brands and admins only; no email or other contact
+    detail — that is disclosed only when the creator expresses interest.
+    """
+    if current_user.role not in ("BRAND", "ADMIN"):
+        raise HTTPException(403, "Only brands can view creator profiles")
+
+    profile = (await db.execute(
+        select(CreatorProfile).where(CreatorProfile.user_id == creator_id)
+    )).scalar()
+    if profile is None:
+        raise HTTPException(404, "Creator not found")
+
+    payloads = await _build_creator_payloads([profile], db)
+    stats = _headline_stats(payloads.get(creator_id, {}))
+    summary = (await summaries_for(db, [creator_id])).get(creator_id)
+
+    return CreatorProfileForBrand(
+        creator_id=creator_id,
+        creator_name=profile.full_name,
+        category=profile.category,
+        location=profile.location,
+        primary_platform=profile.primary_platform,
+        bio=profile.bio,
+        instagram_username=profile.instagram_username,
+        instagram_url=(profile.instagram_profile_link or (
+            f"https://instagram.com/{profile.instagram_username}" if profile.instagram_username else None)),
+        youtube_username=profile.youtube_username,
+        youtube_url=(profile.youtube_profile_link or (
+            f"https://youtube.com/@{profile.youtube_username}" if profile.youtube_username else None)),
+        authenticity=AuthenticitySummary(**summary) if summary else None,
+        **{k: v for k, v in stats.items() if k != "avatar_url"},
+    )

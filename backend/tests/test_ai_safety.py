@@ -105,7 +105,7 @@ async def test_engine_scrubs_a_leaking_model_response(monkeypatch):
     """End-to-end: even if the model ignores the instruction, nothing leaks."""
     brand = {"brand_identity": {"brand_name": "SecretBrand", "website": "secret.example"}}
 
-    async def fake_generate(self, prompt):
+    async def fake_generate(self, prompt, schema=None):
         return json.dumps({
             "fit_level": "High",
             "industry_hint": "Fitness",
@@ -131,8 +131,8 @@ async def test_engine_scrubs_a_leaking_model_response(monkeypatch):
 
 async def test_opportunity_id_is_server_generated(monkeypatch):
     """The model must not be able to choose the id."""
-    async def fake_generate(self, prompt):
-        return json.dumps({"opportunity_id": "attacker-chosen", "status": "open"})
+    async def fake_generate(self, prompt, schema=None):
+        return json.dumps({"opportunity_id": "attacker-chosen", "fit_level": "Low", "status": "open"})
 
     monkeypatch.setattr("app.modules.ai.ai_service.GeminiClient.generate", fake_generate)
     monkeypatch.setattr(

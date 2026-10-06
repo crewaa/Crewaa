@@ -11,3 +11,7 @@ from app.modules.campaigns.models import Campaign
 from app.modules.messaging.models import Message
 from app.modules.notifications.models import Notification
 from app.modules.trust.models import DealDispute, UserBlock, UserReport
+from app.modules.authenticity.models import AudienceSnapshot, AuthenticityReport
+from app.modules.ai.models import SemanticEmbedding
+from app.modules.waitlist.models import WaitlistEntry
+from app.modules.email.models import EmailOutbox, EmailPreference

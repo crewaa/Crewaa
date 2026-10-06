@@ -260,7 +260,7 @@ async def test_the_live_path_drives_the_real_production_prompts(monkeypatch):
 
     seen_prompts = []
 
-    async def fake_generate(self, prompt):
+    async def fake_generate(self, prompt, schema=None):
         seen_prompts.append(prompt)
         if "Rank the creators" in prompt:
             return json.dumps(_recorded()["ranking:niche-match-beats-reach"])

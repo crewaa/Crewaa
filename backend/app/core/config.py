@@ -69,6 +69,44 @@ class Settings(BaseSettings):
     #: plus up to 15 posts, forever — this bounds that growth. 0 disables pruning.
     scrape_ttl_days: int = 90
 
+    #: Scheduled re-scrapes (V3 Phase 1). A GitHub Actions schedule calls
+    #: POST /internal/refresh-stale with this secret in `X-Cron-Secret`.
+    #: Blank disables the endpoint entirely (it answers 404).
+    cron_secret: str = ""
+    #: A creator's data is refreshed once it is older than this.
+    refresh_after_days: int = 7
+    #: Most creator-platform imports one scheduled run may start. Bounds Apify
+    #: spend and keeps a run well inside one request's worth of work.
+    refresh_batch_size: int = 5
+
+    #: Semantic pre-matching (V3 Phase 2). Text model with task types;
+    #: vectors are normalised in GeminiClient.embed.
+    gemini_embedding_model: str = "gemini-embedding-001"
+    embedding_dimensions: int = 768
+    #: How many candidates semantic pre-matching considers before the best
+    #: AI_MAX_CREATORS_PER_PROMPT go to the model. Bounds embedding work.
+    ai_candidate_pool: int = 200
+
+    #: Email notifications (V3 Phase 4), sent through Resend.
+    #: Blank key = email off: nothing is sent and queued emails are marked
+    #: skipped, so local development and CI need no account.
+    resend_api_key: str = ""
+    #: Sender. The domain must be verified in Resend (SPF/DKIM) first.
+    email_from: str = "Crewaa <notifications@crewaa.in>"
+    #: Replies to a notification email land here rather than bouncing.
+    email_reply_to: str = "support@crewaa.in"
+    #: Where links in emails point. No trailing slash.
+    frontend_url: str = "https://crewaa.in"
+    #: Public URL of this API, for the one-click unsubscribe header
+    #: (RFC 8058). Blank leaves that header out; the footer link still works.
+    public_api_url: str = ""
+    #: Most emails sent per UTC day. Resend's free plan allows 100/day; the
+    #: rest wait in the outbox for the next day rather than being refused.
+    email_daily_limit: int = 95
+    #: At most one email per conversation per this many minutes. A burst of
+    #: messages is one email, not twenty.
+    email_message_cooldown_minutes: int = 30
+
     #: Sentry DSN. Blank disables error tracking entirely — the app runs
     #: identically without it, so local development and CI need no account.
     sentry_dsn: str = ""

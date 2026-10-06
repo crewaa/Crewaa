@@ -6,8 +6,30 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
+  --font-sans: var(--font-instrument-sans);
+  --font-display: var(--font-bodoni-moda);
   --font-mono: var(--font-geist-mono);
+  /* Royal Peacock brand colours (V3) — use these names in new code */
+  --color-peacock-bg: var(--pk-bg);
+  --color-peacock-deep: var(--pk-deep);
+  --color-peacock-surface: var(--pk-surface);
+  --color-peacock-raised: var(--pk-raised);
+  --color-peacock-line: var(--pk-line);
+  --color-peacock-text: var(--pk-text);
+  --color-peacock-muted: var(--pk-muted);
+  --color-peacock-teal: var(--pk-teal);
+  --color-peacock-on-teal: var(--pk-on-teal);
+  --color-peacock-gold: var(--pk-gold);
+  --color-peacock-gold-hi: var(--pk-gold-hi);
+  --color-peacock-blue: var(--pk-blue);
+  --color-peacock-ok: var(--pk-ok);
+  --color-peacock-warn: var(--pk-warn);
+  --color-peacock-danger: var(--pk-danger);
+  --color-part-collabs: var(--pk-teal);
+  --color-part-grow: var(--pk-gold);
+  --color-part-ai: #8FA8FF;
+  --color-part-suite: #EE8A6B;
+  --color-part-crew: #B49CF0;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -46,8 +68,129 @@
   --radius-4xl: calc(var(--radius) + 16px);
 }
 
+/*
+ * Royal Peacock palette remap (V3, 2026-10-06).
+ *
+ * ~1,500 existing classes use Tailwind's stock colour names (gray, indigo, cyan…).
+ * Rather than rewrite each one, the stock scales are redefined here as Royal
+ * Peacock shades, so every screen moves to the new theme from this one file:
+ *
+ *   gray / slate / zinc / neutral / stone → peacock neutrals (teal-tinted)
+ *   indigo                                → peacock teal   (primary)
+ *   violet / blue / sky / cyan            → peacock blue
+ *   amber / yellow                        → antique gold   (secondary)
+ *   emerald / green / lime                → success yellow-green
+ *   orange                                → warning amber-orange
+ *   red / rose                            → danger
+ *   pink / fuchsia                        → coral (Marketing Suite)
+ *   purple                                → lilac (Crewaa Crew)
+ *
+ * New code should prefer the semantic `peacock-*` and `part-*` names above.
+ */
+@theme {
+  --color-white: #F2F8F7;
+  --color-black: #020B0E;
+
+  --color-gray-50:#F2F8F7; --color-gray-100:#E2EEEC; --color-gray-200:#C9DCD9; --color-gray-300:#AFC8C6;
+  --color-gray-400:#8FB0B0; --color-gray-500:#6D9190; --color-gray-600:#4E7171; --color-gray-700:#2E4F55;
+  --color-gray-800:#1C3B43; --color-gray-900:#0D252B; --color-gray-950:#071A1F;
+  --color-slate-50:#F2F8F7; --color-slate-100:#E2EEEC; --color-slate-200:#C9DCD9; --color-slate-300:#AFC8C6;
+  --color-slate-400:#8FB0B0; --color-slate-500:#6D9190; --color-slate-600:#4E7171; --color-slate-700:#2E4F55;
+  --color-slate-800:#1C3B43; --color-slate-900:#0D252B; --color-slate-950:#071A1F;
+  --color-zinc-50:#F2F8F7; --color-zinc-100:#E2EEEC; --color-zinc-200:#C9DCD9; --color-zinc-300:#AFC8C6;
+  --color-zinc-400:#8FB0B0; --color-zinc-500:#6D9190; --color-zinc-600:#4E7171; --color-zinc-700:#2E4F55;
+  --color-zinc-800:#1C3B43; --color-zinc-900:#0D252B; --color-zinc-950:#071A1F;
+  --color-neutral-50:#F2F8F7; --color-neutral-100:#E2EEEC; --color-neutral-200:#C9DCD9; --color-neutral-300:#AFC8C6;
+  --color-neutral-400:#8FB0B0; --color-neutral-500:#6D9190; --color-neutral-600:#4E7171; --color-neutral-700:#2E4F55;
+  --color-neutral-800:#1C3B43; --color-neutral-900:#0D252B; --color-neutral-950:#071A1F;
+  --color-stone-50:#F2F8F7; --color-stone-100:#E2EEEC; --color-stone-200:#C9DCD9; --color-stone-300:#AFC8C6;
+  --color-stone-400:#8FB0B0; --color-stone-500:#6D9190; --color-stone-600:#4E7171; --color-stone-700:#2E4F55;
+  --color-stone-800:#1C3B43; --color-stone-900:#0D252B; --color-stone-950:#071A1F;
+
+  /* primary: peacock teal. 950 is the dark "on-teal" text colour for solid teal buttons. */
+  --color-indigo-50:#E8FBF8; --color-indigo-100:#C7F4EE; --color-indigo-200:#95E9DE; --color-indigo-300:#5FDACC;
+  --color-indigo-400:#3ECBBE; --color-indigo-500:#26BDB0; --color-indigo-600:#1FA89C; --color-indigo-700:#178A80;
+  --color-indigo-800:#126B63; --color-indigo-900:#0E4D48; --color-indigo-950:#03201C;
+
+  /* peacock blue */
+  --color-cyan-50:#EAF7FC; --color-cyan-100:#CDEBF7; --color-cyan-200:#A3DAF0; --color-cyan-300:#7CC9E8;
+  --color-cyan-400:#4FB3D9; --color-cyan-500:#2E9CC8; --color-cyan-600:#227FA8; --color-cyan-700:#1B6587;
+  --color-cyan-800:#164F69; --color-cyan-900:#113B4E; --color-cyan-950:#061F2B;
+  --color-sky-50:#EAF7FC; --color-sky-100:#CDEBF7; --color-sky-200:#A3DAF0; --color-sky-300:#7CC9E8;
+  --color-sky-400:#4FB3D9; --color-sky-500:#2E9CC8; --color-sky-600:#227FA8; --color-sky-700:#1B6587;
+  --color-sky-800:#164F69; --color-sky-900:#113B4E; --color-sky-950:#061F2B;
+  --color-blue-50:#EAF7FC; --color-blue-100:#CDEBF7; --color-blue-200:#A3DAF0; --color-blue-300:#7CC9E8;
+  --color-blue-400:#4FB3D9; --color-blue-500:#2E9CC8; --color-blue-600:#227FA8; --color-blue-700:#1B6587;
+  --color-blue-800:#164F69; --color-blue-900:#113B4E; --color-blue-950:#061F2B;
+  --color-violet-50:#EAF7FC; --color-violet-100:#CDEBF7; --color-violet-200:#A3DAF0; --color-violet-300:#7CC9E8;
+  --color-violet-400:#4FB3D9; --color-violet-500:#2E9CC8; --color-violet-600:#227FA8; --color-violet-700:#1B6587;
+  --color-violet-800:#164F69; --color-violet-900:#113B4E; --color-violet-950:#061F2B;
+
+  /* secondary: antique gold */
+  --color-amber-50:#FBF6E6; --color-amber-100:#F6EBC6; --color-amber-200:#F1DA97; --color-amber-300:#E8CA7A;
+  --color-amber-400:#DFBE68; --color-amber-500:#D8B45A; --color-amber-600:#B8923E; --color-amber-700:#8F6F2C;
+  --color-amber-800:#6B5221; --color-amber-900:#4A3917; --color-amber-950:#1E1606;
+  --color-yellow-50:#FBF6E6; --color-yellow-100:#F6EBC6; --color-yellow-200:#F1DA97; --color-yellow-300:#E8CA7A;
+  --color-yellow-400:#DFBE68; --color-yellow-500:#D8B45A; --color-yellow-600:#B8923E; --color-yellow-700:#8F6F2C;
+  --color-yellow-800:#6B5221; --color-yellow-900:#4A3917; --color-yellow-950:#1E1606;
+
+  /* success: yellow-green, kept clearly apart from the teal primary */
+  --color-emerald-50:#F0FAEB; --color-emerald-100:#DBF3D0; --color-emerald-200:#BFE9AD; --color-emerald-300:#A3DF8C;
+  --color-emerald-400:#94D97B; --color-emerald-500:#86D36B; --color-emerald-600:#6AB653; --color-emerald-700:#518F3F;
+  --color-emerald-800:#3D6B30; --color-emerald-900:#2A4A22; --color-emerald-950:#11200D;
+  --color-green-50:#F0FAEB; --color-green-100:#DBF3D0; --color-green-200:#BFE9AD; --color-green-300:#A3DF8C;
+  --color-green-400:#94D97B; --color-green-500:#86D36B; --color-green-600:#6AB653; --color-green-700:#518F3F;
+  --color-green-800:#3D6B30; --color-green-900:#2A4A22; --color-green-950:#11200D;
+  --color-lime-50:#F0FAEB; --color-lime-100:#DBF3D0; --color-lime-200:#BFE9AD; --color-lime-300:#A3DF8C;
+  --color-lime-400:#94D97B; --color-lime-500:#86D36B; --color-lime-600:#6AB653; --color-lime-700:#518F3F;
+  --color-lime-800:#3D6B30; --color-lime-900:#2A4A22; --color-lime-950:#11200D;
+
+  /* warning */
+  --color-orange-50:#FEF3E8; --color-orange-100:#FCE1C6; --color-orange-200:#F9C795; --color-orange-300:#F6B06C;
+  --color-orange-400:#F4A35A; --color-orange-500:#F29A4A; --color-orange-600:#D27C30; --color-orange-700:#A65F22;
+  --color-orange-800:#7A4519; --color-orange-900:#532F11; --color-orange-950:#251406;
+
+  /* danger */
+  --color-red-50:#FEEEED; --color-red-100:#FCD6D4; --color-red-200:#F9B3AF; --color-red-300:#F6938D;
+  --color-red-400:#F4807A; --color-red-500:#F2716B; --color-red-600:#D9524C; --color-red-700:#B03E39;
+  --color-red-800:#832E2A; --color-red-900:#5A201D; --color-red-950:#2A0E0C;
+  --color-rose-50:#FEEEED; --color-rose-100:#FCD6D4; --color-rose-200:#F9B3AF; --color-rose-300:#F6938D;
+  --color-rose-400:#F4807A; --color-rose-500:#F2716B; --color-rose-600:#D9524C; --color-rose-700:#B03E39;
+  --color-rose-800:#832E2A; --color-rose-900:#5A201D; --color-rose-950:#2A0E0C;
+
+  /* coral (Marketing Suite) */
+  --color-pink-50:#FDF0EC; --color-pink-100:#FADBD1; --color-pink-200:#F6BEAC; --color-pink-300:#F2A389;
+  --color-pink-400:#F09678; --color-pink-500:#EE8A6B; --color-pink-600:#D26C4D; --color-pink-700:#A8533A;
+  --color-pink-800:#7C3D2B; --color-pink-900:#55291D; --color-pink-950:#26110B;
+  --color-fuchsia-50:#FDF0EC; --color-fuchsia-100:#FADBD1; --color-fuchsia-200:#F6BEAC; --color-fuchsia-300:#F2A389;
+  --color-fuchsia-400:#F09678; --color-fuchsia-500:#EE8A6B; --color-fuchsia-600:#D26C4D; --color-fuchsia-700:#A8533A;
+  --color-fuchsia-800:#7C3D2B; --color-fuchsia-900:#55291D; --color-fuchsia-950:#26110B;
+
+  /* lilac (Crewaa Crew) */
+  --color-purple-50:#F5F1FE; --color-purple-100:#E7DFFC; --color-purple-200:#D3C5F8; --color-purple-300:#C3B0F4;
+  --color-purple-400:#BBA5F2; --color-purple-500:#B49CF0; --color-purple-600:#9479D6; --color-purple-700:#735BAE;
+  --color-purple-800:#544284; --color-purple-900:#392C5A; --color-purple-950:#130D26;
+}
+
 :root {
-  --radius: 0.625rem;
+  --radius: 0.75rem;
+  /* Royal Peacock (V3) */
+  --pk-bg: #071A1F;
+  --pk-deep: #04121A;
+  --pk-surface: #0D252B;
+  --pk-raised: #12303A;
+  --pk-line: #1C3B43;
+  --pk-text: #EAF4F3;
+  --pk-muted: #8FB0B0;
+  --pk-teal: #26BDB0;
+  --pk-on-teal: #03201C;
+  --pk-gold: #D8B45A;
+  --pk-gold-hi: #F1DA97;
+  --pk-blue: #4FB3D9;
+  --pk-ok: #86D36B;
+  --pk-warn: #F29A4A;
+  --pk-danger: #F2716B;
+
   --background: oklch(1 0 0);
   --foreground: oklch(0.129 0.042 264.695);
   --card: oklch(1 0 0);
@@ -82,37 +225,37 @@
 }
 
 .dark {
-  --background: oklch(0.129 0.042 264.695);
-  --foreground: oklch(0.984 0.003 247.858);
-  --card: oklch(0.208 0.042 265.755);
-  --card-foreground: oklch(0.984 0.003 247.858);
-  --popover: oklch(0.208 0.042 265.755);
-  --popover-foreground: oklch(0.984 0.003 247.858);
-  --primary: oklch(0.929 0.013 255.508);
-  --primary-foreground: oklch(0.208 0.042 265.755);
-  --secondary: oklch(0.279 0.041 260.031);
-  --secondary-foreground: oklch(0.984 0.003 247.858);
-  --muted: oklch(0.279 0.041 260.031);
-  --muted-foreground: oklch(0.704 0.04 256.788);
-  --accent: oklch(0.279 0.041 260.031);
-  --accent-foreground: oklch(0.984 0.003 247.858);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.551 0.027 264.364);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.208 0.042 265.755);
-  --sidebar-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-accent: oklch(0.279 0.041 260.031);
-  --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.551 0.027 264.364);
+  --background: #071A1F;
+  --foreground: #EAF4F3;
+  --card: #0D252B;
+  --card-foreground: #EAF4F3;
+  --popover: #12303A;
+  --popover-foreground: #EAF4F3;
+  --primary: #26BDB0;
+  --primary-foreground: #03201C;
+  --secondary: #12303A;
+  --secondary-foreground: #EAF4F3;
+  --muted: #12303A;
+  --muted-foreground: #8FB0B0;
+  --accent: #12303A;
+  --accent-foreground: #EAF4F3;
+  --destructive: #F2716B;
+  --border: #1C3B43;
+  --input: #1C3B43;
+  --ring: #26BDB0;
+  --chart-1: #26BDB0;
+  --chart-2: #D8B45A;
+  --chart-3: #4FB3D9;
+  --chart-4: #EE8A6B;
+  --chart-5: #B49CF0;
+  --sidebar: #04121A;
+  --sidebar-foreground: #EAF4F3;
+  --sidebar-primary: #26BDB0;
+  --sidebar-primary-foreground: #03201C;
+  --sidebar-accent: #12303A;
+  --sidebar-accent-foreground: #EAF4F3;
+  --sidebar-border: #1C3B43;
+  --sidebar-ring: #26BDB0;
 }
 
 @layer base {
@@ -208,4 +351,16 @@
  */
 html {
   color-scheme: dark;
+}
+
+/* Bodoni Moda is a display face: headings only, never body copy. */
+.font-display {
+  font-family: var(--font-display), "Didot", "Bodoni 72", Georgia, serif;
+  font-optical-sizing: auto;
+  letter-spacing: -0.015em;
+}
+
+::selection {
+  background: rgba(38, 189, 176, 0.35);
+  color: #EAF4F3;
 }

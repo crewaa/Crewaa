@@ -11,6 +11,8 @@ import {
 import { discoverCreators } from "@/lib/ai"
 import { Campaign, listCampaigns } from "@/lib/campaigns"
 import { errorMessage } from "@/lib/types"
+import type { AuthenticitySummary } from "@/lib/authenticity"
+import { AuthenticityBadge } from "@/components/dashboard/authenticity-badge"
 
 type RankedCreator = {
   creator_id: string
@@ -34,6 +36,7 @@ type RankedCreator = {
   avg_comments?: number
   engagement_rate?: number
   is_verified?: boolean
+  authenticity?: AuthenticitySummary | null
 }
 
 /** 142500 -> "142.5K" */
@@ -170,7 +173,7 @@ export default function DiscoverCreatorsPage() {
           ← Back to Brand Studio
         </button>
 
-        <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mb-3">
+        <h1 className="text-4xl md:text-5xl font-display font-medium mb-3">
           Discover Creators
         </h1>
         <p className="text-lg text-gray-400 mb-12">
@@ -439,7 +442,7 @@ export default function DiscoverCreatorsPage() {
             <button
               type="submit"
               disabled={!canSubmit}
-              className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold text-lg hover:from-indigo-500 hover:to-violet-500 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+              className="w-full py-4 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-600 text-indigo-950 font-semibold text-lg hover:from-indigo-400 hover:to-violet-400 transition disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
             >
               <span className="flex items-center justify-center gap-2">
                 <Search className="h-5 w-5" />
@@ -503,7 +506,7 @@ export default function DiscoverCreatorsPage() {
               {result.ranked_creators.map((creator, i) => (
                 <div
                   key={creator.creator_id + i}
-                  className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-6 transition-all duration-300 hover:border-white/20"
+                  className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-6 transition-all duration-300 hover:border-white/20"
                 >
                   {/* Identity — the raw database id used to be printed here */}
                   <div className="flex items-start justify-between mb-4 gap-4">
@@ -542,6 +545,12 @@ export default function DiscoverCreatorsPage() {
                       {creator.fit_level} Fit
                     </span>
                   </div>
+
+                  {creator.authenticity && (
+                    <div className="mb-4">
+                      <AuthenticityBadge summary={creator.authenticity} showReason />
+                    </div>
+                  )}
 
                   {/* Audience — what a brand actually needs to decide */}
                   <div className="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -619,6 +628,13 @@ export default function DiscoverCreatorsPage() {
                       </ul>
                     </div>
                   )}
+
+                  <Link
+                    href={`/dashboard/brand/creators/${creator.creator_id}`}
+                    className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-peacock-teal transition hover:gap-3"
+                  >
+                    View full profile <span aria-hidden>→</span>
+                  </Link>
                 </div>
               ))}
             </div>

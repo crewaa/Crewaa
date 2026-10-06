@@ -17,7 +17,7 @@ import {
 
 import {
   Delivery, DeliveryState, ReviewState,
-  getDelivery, getReviews, reviewDelivery, submitDelivery, submitReview,
+  getReviews, reviewDelivery, submitDelivery, submitReview,
 } from "@/lib/deal-terms"
 import { errorMessage } from "@/lib/types"
 import { useToast } from "@/components/ui/toast"
@@ -220,7 +220,7 @@ export default function DeliveryPanel({
                         <button
                           disabled={busy}
                           onClick={() => handleReview(s.id, true)}
-                          className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm text-white transition hover:bg-emerald-500 disabled:opacity-50"
+                          className="flex items-center gap-1.5 rounded-lg bg-emerald-600 px-4 py-2 text-sm text-emerald-950 transition hover:bg-emerald-500 disabled:opacity-50"
                         >
                           {busy ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                 : <CheckCircle2 className="h-3.5 w-3.5" />}
@@ -269,7 +269,7 @@ export default function DeliveryPanel({
                       <button
                         disabled={busy || !url.trim()}
                         onClick={() => handleSubmit(label)}
-                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                        className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-indigo-950 transition hover:bg-indigo-500 disabled:opacity-50"
                       >
                         Submit
                       </button>
@@ -336,7 +336,7 @@ export default function DeliveryPanel({
                   act(() => submitReview(interestId, rating, comment.trim() || undefined),
                       onReviewsChange, "Review submitted.")
                 }
-                className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-white transition hover:bg-indigo-500 disabled:opacity-50"
+                className="rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-medium text-indigo-950 transition hover:bg-indigo-500 disabled:opacity-50"
               >
                 Submit review
               </button>

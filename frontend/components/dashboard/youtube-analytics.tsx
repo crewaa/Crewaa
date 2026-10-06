@@ -7,7 +7,7 @@ import ProfileHeader from "./profileheader"
 import ChartCard from "./chartwrapper"
 import Stat from "./statcard"
 import LineChartComponent from "./linechartcomponent"
-import RecentPosts from "./recentposts"
+import { DataFreshness } from "./data-freshness"
 
 interface YouTubeChannel {
   id: number
@@ -197,16 +197,12 @@ export default function YouTubeCreatorDashboard({ userId }: { userId: number }) 
 
   return (
     <div className="space-y-8">
-      {/* Scrape Button */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleScrape}
-          disabled={scraping}
-          className="bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800"
-        >
-          {scraping ? "Importing…" : "Refresh Channel Data"}
-        </Button>
-      </div>
+      <DataFreshness
+        scrapedAt={data.channel.scraped_at}
+        onRefresh={handleScrape}
+        refreshing={scraping}
+        refreshLabel="Refresh YouTube data"
+      />
 
       {scrapeError && (
         <p
@@ -276,11 +272,6 @@ export default function YouTubeCreatorDashboard({ userId }: { userId: number }) 
           </div>
         </div>
       )}
-
-      {/* Last Updated */}
-      <div className="text-sm text-gray-500 text-center">
-        Last updated: {new Date(data.channel.scraped_at).toLocaleString()}
-      </div>
     </div>
   )
 }

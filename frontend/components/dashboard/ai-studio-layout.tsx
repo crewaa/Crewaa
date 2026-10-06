@@ -28,7 +28,7 @@ export function AICard({
   description: string
   action?: string
   badge?: string
-  accent?: "indigo" | "cyan" | "amber"
+  accent?: "indigo" | "cyan" | "amber" | "ai" | "suite" | "crew"
   href?: string
   onClick?: () => void
   /** Disables the action and explains what to do first. */
@@ -41,14 +41,17 @@ export function AICard({
     indigo: "from-indigo-500/20 via-indigo-400/10",
     cyan: "from-cyan-500/20 via-cyan-400/10",
     amber: "from-amber-500/20 via-amber-400/10",
+    ai: "from-part-ai/20 via-part-ai/10",
+    suite: "from-part-suite/20 via-part-suite/10",
+    crew: "from-part-crew/20 via-part-crew/10",
   }
 
   const buttonClass =
-    "rounded-full bg-white px-8 py-3 text-sm font-medium text-black transition hover:bg-gray-100 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+    "rounded-full bg-peacock-teal px-8 py-3 text-sm font-semibold text-peacock-on-teal shadow-[0_10px_30px_-12px_rgba(38,189,176,0.7)] transition hover:-translate-y-0.5 hover:bg-indigo-400 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-peacock-teal/60"
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-black px-8 py-10 text-center transition-all duration-300 ${
+      className={`relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep px-8 py-10 text-center transition-all duration-300 ${
         locked ? "opacity-80" : "hover:-translate-y-1 hover:shadow-2xl"
       }`}
     >

@@ -13,14 +13,14 @@ import type { MetadataRoute } from "next";
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Crewaa — where brands and creators collaborate with intelligence",
+    name: "Crewaa — brands, businesses and creators. One crew.",
     short_name: "Crewaa",
     description:
-      "A curated collaboration platform connecting brands with verified creators.",
+      "Creator collaborations, business growth, AI influencers and a crew for creators — built for India.",
     start_url: "/",
     display: "standalone",
-    background_color: "#070913",
-    theme_color: "#0B0D17",
+    background_color: "#071A1F",
+    theme_color: "#071A1F",
     icons: [
       // `any`, not `maskable`. These are drawn as finished app icons — a
       // rounded square with transparent corners — so they already carry their

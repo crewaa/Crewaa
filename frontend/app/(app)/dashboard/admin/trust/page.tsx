@@ -23,12 +23,13 @@ import {
 } from "@/lib/admin"
 import { errorMessage } from "@/lib/types"
 import { useToast } from "@/components/ui/toast"
+import { parseApiDate } from "@/lib/time"
 
 type Tab = "reports" | "disputes" | "verifications"
 
 function timeAgo(iso: string | null): string {
   if (!iso) return "—"
-  const hours = (Date.now() - new Date(iso).getTime()) / 36e5
+  const hours = (Date.now() - (parseApiDate(iso)?.getTime() ?? Date.now())) / 36e5
   if (hours < 1) return "under an hour ago"
   if (hours < 24) return `${Math.floor(hours)}h ago`
   return `${Math.floor(hours / 24)}d ago`
@@ -93,12 +94,12 @@ export default function AdminTrustPage() {
 
   return (
     <div className="mx-auto max-w-5xl px-6 py-10">
-      <h1 className="text-2xl font-semibold text-white">Trust &amp; safety</h1>
+      <h1 className="text-2xl font-display font-medium text-white">Trust &amp; safety</h1>
       <p className="mt-1 text-sm text-gray-500">
         Oldest first — whatever has waited longest is at the top.
       </p>
 
-      <div className="mt-6 flex gap-2">
+      <div className="mt-6 flex flex-wrap gap-2">
         {tabs.map(({ id, label, icon: Icon, count }) => (
           <button
             key={id}
@@ -112,7 +113,7 @@ export default function AdminTrustPage() {
             <Icon className="h-4 w-4" />
             {label}
             {count > 0 && (
-              <span className="rounded-full bg-indigo-500 px-1.5 text-[11px] font-semibold text-white">
+              <span className="rounded-full bg-indigo-500 px-1.5 text-[11px] font-semibold text-indigo-950">
                 {count}
               </span>
             )}

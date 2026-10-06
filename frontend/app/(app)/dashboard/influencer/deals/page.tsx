@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import { Check, Clock, Loader2, RefreshCw, Sparkles, Tag } from "lucide-react"
 import { streamBrandDeals, getCachedBrandDeals, expressInterest, withdrawInterest } from "@/lib/ai"
 import { errorMessage } from "@/lib/types"
+import { parseApiDate } from "@/lib/time"
 
 type BrandDeal = {
   opportunity_id: string
@@ -54,7 +55,7 @@ export default function BrandDealsPage() {
         if (cached) {
           setDeals(cached)
         }
-      } catch (err) {
+      } catch {
         // Ignore cache miss
       } finally {
         setLoading(false)
@@ -149,7 +150,7 @@ export default function BrandDealsPage() {
           ← Back to Creator Studio
         </button>
 
-        <h1 className="text-4xl md:text-5xl font-semibold tracking-tight mb-3">
+        <h1 className="text-4xl md:text-5xl font-display font-medium mb-3">
           Brand Deals
         </h1>
         <p className="text-lg text-gray-400 mb-10">
@@ -195,7 +196,7 @@ export default function BrandDealsPage() {
             </div>
             <button
               onClick={fetchDeals}
-              className="mt-4 rounded-full bg-white px-10 py-4 text-base font-semibold text-black hover:bg-gray-100 transition"
+              className="mt-4 rounded-full bg-peacock-teal px-10 py-4 text-base font-semibold text-peacock-on-teal hover:brightness-110 transition"
             >
               <span className="flex items-center gap-2"><Sparkles className="h-4 w-4" /> Find My Deals</span>
             </button>
@@ -230,7 +231,7 @@ export default function BrandDealsPage() {
                 <Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
                 These matches were generated{" "}
                 {deals.generated_at
-                  ? new Date(deals.generated_at).toLocaleDateString()
+                  ? parseApiDate(deals.generated_at)?.toLocaleDateString()
                   : "a while ago"}{" "}
                 and may not reflect your current audience. Refresh for an up-to-date list.
               </p>
@@ -249,7 +250,7 @@ export default function BrandDealsPage() {
                 {deals.opportunities.map((deal) => (
                   <div
                     key={deal.opportunity_id}
-                    className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-[#0E1220] to-[#080B14] p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-1"
+                    className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-6 transition-all duration-300 hover:border-white/20 hover:-translate-y-1"
                   >
                     {/* Top bar */}
                     <div className="flex items-center justify-between mb-4">
@@ -410,7 +411,7 @@ export default function BrandDealsPage() {
                       className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
                         deal.interested
                           ? "border border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
-                          : "bg-white text-black hover:bg-gray-100"
+                          : "bg-peacock-teal text-peacock-on-teal hover:brightness-110"
                       }`}
                     >
                       {pending === deal.opportunity_id ? (

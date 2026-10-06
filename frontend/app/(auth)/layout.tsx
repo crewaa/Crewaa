@@ -4,7 +4,7 @@ export default function AuthPageLayout({
     children: React.ReactNode
   }) {
     return (
-        <div className="bg-[#0B0D10] text-[#E5E7EB]">
+        <div className="bg-peacock-bg text-peacock-text">
           {children}
         </div>
     )

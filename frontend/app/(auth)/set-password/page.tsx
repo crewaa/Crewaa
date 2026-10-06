@@ -51,13 +51,13 @@ function SetPasswordForm() {
 
   return (
     <FadeIn>
-      <main className="min-h-screen flex items-center justify-center px-6 bg-black">
+      <main className="min-h-screen flex items-center justify-center px-6 bg-peacock-bg bg-[radial-gradient(60%_50%_at_50%_0%,rgba(38,189,176,0.10),transparent_70%)]">
         <div className="flex flex-col w-full max-w-sm">
           <AuthBrand />
-          <Card className="w-full max-w-sm bg-[#111318] border-white/10 p-8">
+          <Card className="w-full max-w-sm bg-peacock-surface border-white/10 p-8">
             {/* Header */}
             <div className="space-y-2 mb-6">
-              <h1 className="text-2xl font-semibold text-white tracking-tight">
+              <h1 className="text-2xl font-display font-medium text-white">
                 Set your password
               </h1>
               <p className="text-sm text-gray-400">
@@ -118,7 +118,7 @@ function SetPasswordForm() {
               <Button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-2 disabled:opacity-60"
+                className="w-full bg-indigo-600 hover:bg-indigo-400 text-indigo-950 mt-2 disabled:opacity-60"
               >
                 {loading ? "Saving..." : "Set password & continue"}
               </Button>

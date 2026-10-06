@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.modules.email.service import stage_email
 from app.modules.notifications.models import Notification
 
 
@@ -26,6 +27,7 @@ async def notify(
     link: str,
     interest_id: int | None = None,
     collapse: bool = False,
+    email: bool = True,
 ) -> None:
     """
     Stage a notification for `user_id`. The caller commits.
@@ -36,7 +38,18 @@ async def notify(
     at, not ten; without this the bell becomes a counter of individual messages
     and people stop reading it. Read notifications are never collapsed into —
     something already seen should not silently change under the reader.
+
+    `email=True` (V3 Phase 4) also stages the same text as an email, in the
+    same transaction. Whether it is actually sent depends on the recipient's
+    email settings, checked at send time; message emails are additionally
+    limited to one per conversation per cooldown (see stage_email).
     """
+    if email:
+        await stage_email(
+            db, user_id=user_id, kind=kind, subject=title, body=body,
+            link=link, interest_id=interest_id,
+        )
+
     if collapse and interest_id is not None:
         existing = (await db.execute(
             select(Notification)

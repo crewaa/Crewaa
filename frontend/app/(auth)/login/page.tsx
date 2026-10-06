@@ -57,12 +57,12 @@ export default function LoginPage() {
 
   return (
     <FadeIn>
-    <main className="min-h-screen flex items-center justify-center px-6 bg-black">
+    <main className="min-h-screen flex items-center justify-center px-6 bg-peacock-bg bg-[radial-gradient(60%_50%_at_50%_0%,rgba(38,189,176,0.10),transparent_70%)]">
     <div className="flex flex-col w-full max-w-sm">
       <AuthBrand />
-    <Card className="w-full max-w-sm bg-[#111318] border-white/10 p-8">
+    <Card className="w-full max-w-sm bg-peacock-surface border-white/10 p-8">
       <div className="space-y-2 mb-6">
-        <h1 className="text-2xl font-semibold text-white tracking-tight">
+        <h1 className="text-2xl font-display font-medium text-white">
           Welcome back
         </h1>
         <p className="text-sm text-gray-400">
@@ -105,7 +105,7 @@ export default function LoginPage() {
         <Button
           type="submit"
           disabled={loading}
-          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white mt-2 disabled:opacity-50"
+          className="w-full bg-indigo-600 hover:bg-indigo-400 text-indigo-950 mt-2 disabled:opacity-50"
         >
           {loading ? "Logging in…" : "Login"}
         </Button>
@@ -123,7 +123,7 @@ export default function LoginPage() {
             <span className="w-full border-t border-white/10" />
           </div>
           <div className="relative flex justify-center text-xs uppercase">
-            <span className="bg-[#111318] px-2 text-gray-500">Or continue with</span>
+            <span className="bg-peacock-surface px-2 text-gray-500">Or continue with</span>
           </div>
         </div>
 

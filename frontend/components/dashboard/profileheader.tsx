@@ -1,4 +1,5 @@
 import { BadgeCheck } from "lucide-react"
+import { parseApiDate } from "@/lib/time"
 
 interface ProfileData {
     full_name?: string
@@ -37,7 +38,7 @@ function ProfileHeader({ profile }: { profile: ProfileData }) {
   
           {profile.scraped_at && (
             <p className="mt-2 text-xs text-muted-foreground">
-              Last synced: {new Date(profile.scraped_at).toLocaleString()}
+              Last synced: {parseApiDate(profile.scraped_at)?.toLocaleString() ?? "—"}
             </p>
           )}
         </div>

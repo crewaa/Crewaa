@@ -187,3 +187,42 @@ where a 401 is the answer rather than a stale session.
 `--background`, so previously anyone whose OS was set to light got ~48 `dark:` utilities silently
 not applying inside a hardcoded dark shell. The `app-dark` runtime class dance in `DashboardShell`
 is gone with it; `html { color-scheme: dark }` covers native scrollbars and the overscroll gutter.
+
+---
+
+## Version 3 additions (2026-10-06)
+
+**Theme.** Royal Peacock, dark only. Tokens live in `app/globals.css` (`--pk-*`, `peacock-*`,
+`part-*`); Tailwind's stock colour scales are remapped onto them, so older pages follow the theme
+without edits. Fonts: Bodoni Moda (`font-display`) and Instrument Sans.
+
+**Parts.** `lib/parts.ts` defines the five parts and which role sees which (brands: Collabs, Grow,
+AI Influencers, Marketing Suite; creators: Collabs, Marketing Suite, Crew). Every pre-V3 page lives
+under Collabs. `lib/session.tsx` → `isRouteAllowed` uses the same list.
+
+**Public site** — `app/(landing-page)/`, styled by `components/site/site.css` (scoped to `.site`):
+
+| Route | What it is |
+|---|---|
+| `/` | Animated home: hero, five-part tour, Authenticity section, brands/creators switch, timeline, Grow band |
+| `/collabs` | Live part page |
+| `/grow`, `/marketing-suite`, `/crew` | "Coming soon" only — no form, no notify-me |
+| `/ai-influencers` | "Coming soon" + waitlist form |
+| `/unsubscribe` | One-click email unsubscribe (asks for a click; never acts on page load) |
+| `/contact`, `/privacy`, `/terms` | Unchanged content under the new nav |
+
+`app/sitemap.ts` and `app/robots.ts` list the public pages and keep `/dashboard` out of search.
+
+**App routes added**
+
+| Route | Who | What |
+|---|---|---|
+| `/dashboard/grow`, `/dashboard/marketing-suite`, `/dashboard/crew` | by role | Coming-soon pages (`components/dashboard/coming-soon.tsx`) |
+| `/dashboard/ai-influencers` | BRAND | Coming soon + waitlist (email prefilled) |
+| `/dashboard/brand/creators/[id]` | BRAND | Creator profile: stats, full Authenticity report, revealed reviews. Linked from Discover, Responses and the Dashboard |
+| `/dashboard/admin/waitlist` | ADMIN | Waitlist with CSV export |
+| `/dashboard/settings` | everyone | Email notification switches (avatar menu and the bell) |
+
+**Shared helpers:** `lib/time.ts` (`parseApiDate` — the API sends naive UTC; never `new Date()` it
+directly), `lib/authenticity.ts`, `components/dashboard/authenticity-{card,badge}.tsx`,
+`components/dashboard/data-freshness.tsx`.

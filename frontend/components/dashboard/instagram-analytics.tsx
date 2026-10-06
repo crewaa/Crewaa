@@ -8,6 +8,7 @@ import ChartCard from "./chartwrapper"
 import Stat from "./statcard"
 import LineChartComponent from "./linechartcomponent"
 import RecentPosts from "./recentposts"
+import { DataFreshness } from "./data-freshness"
 
 interface InstagramProfile {
   id: number
@@ -199,16 +200,12 @@ export default function InstagramCreatorDashboard({ userId }: { userId: number }
 
   return (
     <div className="space-y-8">
-      {/* Scrape Button */}
-      <div className="flex justify-end">
-        <Button
-          onClick={handleScrape}
-          disabled={scraping}
-          className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
-        >
-          {scraping ? "Importing…" : "Refresh Profile Data"}
-        </Button>
-      </div>
+      <DataFreshness
+        scrapedAt={data.profile.scraped_at}
+        onRefresh={handleScrape}
+        refreshing={scraping}
+        refreshLabel="Refresh Instagram data"
+      />
 
       {scrapeError && (
         <p
@@ -245,11 +242,6 @@ export default function InstagramCreatorDashboard({ userId }: { userId: number }
 
       {/* Recent Posts */}
       {data.posts.length > 0 && <RecentPosts posts={data.posts} />}
-
-      {/* Last Updated */}
-      <div className="text-sm text-gray-500 text-center">
-        Last updated: {new Date(data.profile.scraped_at).toLocaleString()}
-      </div>
     </div>
   )
 }
