@@ -288,19 +288,45 @@ export default function ProfileScreen() {
       {/* ================= CREATOR SOCIAL OVERVIEW CARD ================= */}
       {!isBrand ? (
         <Card elevated style={{ marginBottom: 20 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 14,
+              gap: 8,
+            }}
+          >
+            <View
+              style={{
+                flexDirection: 'row',
+                alignItems: 'center',
+                gap: 8,
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
               <Sparkles size={18} color={PeacockColors.teal} />
-              <Text style={{ color: PeacockColors.text, fontSize: 17, fontWeight: '700' }}>
-                Creator Channels & AI Score
+              <Text
+                numberOfLines={1}
+                ellipsizeMode="tail"
+                style={{
+                  color: PeacockColors.text,
+                  fontSize: 16,
+                  fontWeight: '700',
+                  flexShrink: 1,
+                }}
+              >
+                Channels & Signals
               </Text>
             </View>
+
             <Button
               title="Edit"
               variant="outline"
+              size="sm"
               icon={<Edit3 size={13} color={PeacockColors.text} />}
               onPress={() => router.push('/profile-edit' as any)}
-              style={{ paddingVertical: 6, paddingHorizontal: 10 }}
             />
           </View>
 
@@ -415,16 +441,35 @@ export default function ProfileScreen() {
       ) : (
         /* ================= BRAND DETAILS CARD ================= */
         <Card elevated style={{ marginBottom: 20 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-            <Text style={{ color: PeacockColors.text, fontSize: 17, fontWeight: '700' }}>
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              marginBottom: 14,
+              gap: 8,
+            }}
+          >
+            <Text
+              numberOfLines={1}
+              ellipsizeMode="tail"
+              style={{
+                color: PeacockColors.text,
+                fontSize: 16,
+                fontWeight: '700',
+                flex: 1,
+                minWidth: 0,
+              }}
+            >
               Brand Profile Details
             </Text>
+
             <Button
               title="Edit"
               variant="outline"
+              size="sm"
               icon={<Edit3 size={13} color={PeacockColors.text} />}
               onPress={() => router.push('/profile-edit' as any)}
-              style={{ paddingVertical: 6, paddingHorizontal: 10 }}
             />
           </View>
 

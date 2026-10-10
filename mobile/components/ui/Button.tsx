@@ -3,30 +3,39 @@ import {
   ActivityIndicator,
   Pressable,
   PressableProps,
+  StyleProp,
   StyleSheet,
   Text,
+  TextStyle,
+  View,
+  ViewStyle,
 } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { PeacockColors } from '../../constants/Colors';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
+export type ButtonSize = 'sm' | 'md' | 'lg';
 
 interface ButtonProps extends PressableProps {
   title: string;
   variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
   className?: string;
   icon?: React.ReactNode;
+  textStyle?: StyleProp<TextStyle>;
 }
 
 export function Button({
   title,
   variant = 'primary',
+  size = 'md',
   loading = false,
   disabled,
   onPress,
   className = '',
   style,
+  textStyle,
   icon,
   ...props
 }: ButtonProps) {
@@ -40,7 +49,7 @@ export function Button({
     onPress?.(e);
   };
 
-  const getVariantStyle = () => {
+  const getVariantStyle = (): ViewStyle => {
     switch (variant) {
       case 'primary':
         return {
@@ -70,7 +79,31 @@ export function Button({
     }
   };
 
-  const getTextColor = () => {
+  const getSizeStyle = (): ViewStyle => {
+    switch (size) {
+      case 'sm':
+        return {
+          paddingVertical: 7,
+          paddingHorizontal: 12,
+          borderRadius: 8,
+        };
+      case 'lg':
+        return {
+          paddingVertical: 16,
+          paddingHorizontal: 24,
+          borderRadius: 14,
+        };
+      case 'md':
+      default:
+        return {
+          paddingVertical: 14,
+          paddingHorizontal: 20,
+          borderRadius: 12,
+        };
+    }
+  };
+
+  const getTextColor = (): string => {
     switch (variant) {
       case 'primary':
         return PeacockColors.onTeal;
@@ -83,35 +116,77 @@ export function Button({
     }
   };
 
+  const getTextSizeStyle = (): TextStyle => {
+    switch (size) {
+      case 'sm':
+        return {
+          fontSize: 13,
+          fontWeight: '700',
+        };
+      case 'lg':
+        return {
+          fontSize: 16,
+          fontWeight: '700',
+        };
+      case 'md':
+      default:
+        return {
+          fontSize: 15,
+          fontWeight: '700',
+        };
+    }
+  };
+
+  const textColor = getTextColor();
+
+  const renderIcon = () => {
+    if (!icon) return null;
+    if (React.isValidElement(icon)) {
+      const iconElement = icon as React.ReactElement<any>;
+      const customColor = iconElement.props?.color;
+      const effectiveColor = customColor ?? textColor;
+      return (
+        <View style={styles.iconContainer}>
+          {React.cloneElement(iconElement, { color: effectiveColor })}
+        </View>
+      );
+    }
+    return <View style={styles.iconContainer}>{icon}</View>;
+  };
+
   return (
     <Pressable
       onPress={handlePress}
       disabled={disabled || loading}
       style={(state) => [
         styles.base,
+        getSizeStyle(),
         getVariantStyle(),
         state.pressed ? { opacity: 0.85 } : null,
         disabled ? { opacity: 0.5 } : null,
         typeof style === 'function' ? style(state) : style,
       ]}
-      className={`flex-row items-center justify-center rounded-xl px-5 py-3.5 border ${className}`}
       {...props}
     >
       {loading ? (
         <ActivityIndicator
           size="small"
-          color={variant === 'primary' ? PeacockColors.onTeal : PeacockColors.teal}
+          color={textColor}
         />
       ) : (
-        <>
-          {icon ? <Text className="mr-2">{icon}</Text> : null}
+        <View style={styles.contentRow}>
+          {renderIcon()}
           <Text
-            style={[styles.text, { color: getTextColor() }]}
-            className="text-base font-bold text-center"
+            style={[
+              styles.text,
+              getTextSizeStyle(),
+              { color: textColor },
+              textStyle,
+            ]}
           >
             {title}
           </Text>
-        </>
+        </View>
       )}
     </Pressable>
   );
@@ -119,17 +194,22 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 12,
     borderWidth: 1,
-    paddingVertical: 14,
-    paddingHorizontal: 20,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
   },
+  contentRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  iconContainer: {
+    marginRight: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   text: {
-    fontSize: 15,
-    fontWeight: '700',
     textAlign: 'center',
   },
 });
