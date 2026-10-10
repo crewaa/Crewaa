@@ -1,0 +1,15 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Ensure dark background and text contrast across both native and web */
+html, body, #root {
+  background-color: #071A1F;
+  color: #EAF4F3;
+}
+
+input, textarea {
+  color: #EAF4F3 !important;
+  background-color: #0D252B !important;
+  border-color: #1C3B43 !important;
+}

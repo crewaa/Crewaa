@@ -26,6 +26,17 @@ pnpm dev
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 
+## Getting Started Mobile (React Native / Expo)
+
+```bash
+cd mobile
+
+npm install
+
+npm start
+```
+
+
 ## Getting Started Backend
 
 ```bash
