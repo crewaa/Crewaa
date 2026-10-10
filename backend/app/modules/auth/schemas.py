@@ -14,6 +14,7 @@ class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
     role: str
+    refresh_token: Optional[str] = None
 
 class GoogleAuthRequest(BaseModel):
     id_token: str

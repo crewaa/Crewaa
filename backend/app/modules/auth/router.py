@@ -84,8 +84,9 @@ async def signup(
     # to verify a password we had just hashed ourselves — doubling the cost of
     # the slowest thing in the request for no additional certainty.
     access_token, role = issue_access_token(user)
-    _set_refresh_cookie(response, issue_refresh_token(user))
-    return {"access_token": access_token, "role": role}
+    refresh_token = issue_refresh_token(user)
+    _set_refresh_cookie(response, refresh_token)
+    return {"access_token": access_token, "role": role, "refresh_token": refresh_token}
 
 
 @router.post(
@@ -129,10 +130,12 @@ async def login(
     # Safe to re-read: authenticate_user has already proven the password, so
     # this is a lookup, not a second credential check.
     user = await find_user_by_email(db, data.email)
+    refresh_token = None
     if user:
-        _set_refresh_cookie(response, issue_refresh_token(user))
+        refresh_token = issue_refresh_token(user)
+        _set_refresh_cookie(response, refresh_token)
 
-    return {"access_token": access_token, "role": role}
+    return {"access_token": access_token, "role": role, "refresh_token": refresh_token}
 
 
 @router.post(
@@ -195,16 +198,17 @@ async def refresh(
     Deliberately not behind `get_current_user`: the whole point is to be
     callable when the access token has already expired.
     """
-    refresh_token = request.cookies.get(REFRESH_COOKIE)
+    refresh_token = request.cookies.get(REFRESH_COOKIE) or request.headers.get("x-refresh-token")
     access_token, role, user = await refresh_access_token(db, refresh_token)
 
     # Rotate on every use. A refresh token that never changes is a single
     # long-lived credential moving back and forth across the network; rotating
     # means a copy captured once stops working as soon as the real client
     # refreshes again.
-    _set_refresh_cookie(response, issue_refresh_token(user))
+    new_refresh = issue_refresh_token(user)
+    _set_refresh_cookie(response, new_refresh)
 
-    return {"access_token": access_token, "role": role}
+    return {"access_token": access_token, "role": role, "refresh_token": new_refresh}
 
 
 @router.post("/logout", status_code=status.HTTP_204_NO_CONTENT)
@@ -230,7 +234,7 @@ async def logout(
     trying to end a session that is already over, and reporting that as an
     error gives them nothing to do about it.
     """
-    token = request.cookies.get(REFRESH_COOKIE)
+    token = request.cookies.get(REFRESH_COOKIE) or request.headers.get("x-refresh-token")
     if token:
         try:
             _, _, user = await refresh_access_token(db, token)
