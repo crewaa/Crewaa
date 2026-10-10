@@ -11,9 +11,16 @@ export interface CurrentUser {
   role: Role;
 }
 
+export interface ProfileStatus {
+  has_profile: boolean;
+  has_social_handles: boolean;
+  is_complete: boolean;
+  missing?: string[];
+}
+
 export interface CreatorProfile {
-  id: number;
-  user_id: number;
+  id?: number;
+  user_id?: number;
   full_name: string;
   location: string;
   primary_platform: string;
@@ -26,8 +33,8 @@ export interface CreatorProfile {
 }
 
 export interface BrandProfile {
-  id: number;
-  user_id: number;
+  id?: number;
+  user_id?: number;
   brand_name: string;
   industry: string;
   description?: string | null;
@@ -40,8 +47,34 @@ export interface BrandProfile {
   platform_preferences?: string | null;
 }
 
+export type SignalStatus = 'good' | 'warn' | 'bad' | 'unknown';
+export type AuthenticityLevel = 'high' | 'medium' | 'low' | 'insufficient';
+
+export interface AuthenticitySignal {
+  key: string;
+  label: string;
+  status: SignalStatus;
+  value?: string | null;
+  detail: string;
+}
+
+export interface AuthenticityPlatformReport {
+  platform: 'instagram' | 'youtube';
+  score: number | null;
+  level: AuthenticityLevel;
+  signals: AuthenticitySignal[];
+  audience?: number | null;
+  computed_at: string;
+}
+
+export interface AuthenticityReportResponse {
+  creator_id: number;
+  reports: AuthenticityPlatformReport[];
+  disclaimer?: string;
+}
+
 export interface AuthenticitySummary {
-  level: 'high' | 'medium' | 'low' | 'insufficient';
+  level: AuthenticityLevel;
   score?: number | null;
   flagged_signals?: string[];
   disclaimer: string;
@@ -65,6 +98,75 @@ export interface ScrapeStatus {
   message?: string | null;
   started_at?: string | null;
   finished_at?: string | null;
+}
+
+export interface InstagramProfile {
+  id: number;
+  full_name: string;
+  username: string;
+  profile_picture?: string | null;
+  followers: number;
+  following: number;
+  posts_count: number;
+  bio?: string | null;
+  is_verified: boolean;
+  scraped_at: string;
+}
+
+export interface InstagramPost {
+  id: number;
+  shortcode: string;
+  likes: number;
+  comments: number;
+  views?: number | null;
+  caption?: string | null;
+  posted_at: string;
+  is_video: boolean;
+  scraped_at: string;
+}
+
+export interface InstagramAnalyticsResponse {
+  status: 'success' | 'no_data' | 'error';
+  message?: string;
+  profile: InstagramProfile | null;
+  posts: InstagramPost[];
+}
+
+export interface YouTubeChannel {
+  id: number;
+  channel_id?: string;
+  username?: string | null;
+  title: string;
+  description?: string | null;
+  profile_picture?: string | null;
+  custom_url?: string | null;
+  subscribers: number;
+  total_views: number;
+  video_count?: number;
+  total_videos?: number;
+  is_verified?: boolean;
+  scraped_at: string;
+}
+
+export interface YouTubeVideo {
+  id: number;
+  video_id: string;
+  title: string;
+  description?: string | null;
+  thumbnail?: string | null;
+  views: number;
+  likes: number;
+  comments: number;
+  duration?: string | null;
+  published_at: string;
+  scraped_at?: string;
+}
+
+export interface YouTubeAnalyticsResponse {
+  status: 'success' | 'no_data' | 'error';
+  message?: string;
+  channel: YouTubeChannel | null;
+  videos: YouTubeVideo[];
 }
 
 export interface BrandDeal {
@@ -164,4 +266,101 @@ export interface ThreadDetail {
   counterpart: Counterpart;
   interest_status: string;
   messages: MessageOut[];
+}
+
+export interface RankedCreator {
+  creator_id: string;
+  creator_name?: string;
+  fit_level: string;
+  score_reasoning?: string[];
+  risks?: string[];
+  recommended_campaign_type?: string;
+  category?: string;
+  location?: string;
+  primary_platform?: string;
+  bio?: string;
+  instagram_username?: string;
+  instagram_url?: string;
+  youtube_username?: string;
+  youtube_url?: string;
+  followers?: number;
+  subscribers?: number;
+  avg_likes?: number;
+  avg_comments?: number;
+  engagement_rate?: number;
+  is_verified?: boolean;
+  authenticity?: AuthenticitySummary | null;
+}
+
+export interface DiscoverResult {
+  ranked_creators: RankedCreator[];
+  final_recommendation?: string;
+  campaign_id?: number | null;
+  campaign_name?: string | null;
+  criteria_source?: 'campaign' | 'custom';
+  follower_floor_relaxed?: boolean;
+}
+
+export interface InterestedCreator {
+  interest_id: number;
+  creator_id: number;
+  creator_name?: string;
+  email: string;
+  category?: string;
+  location?: string;
+  instagram_username?: string;
+  youtube_username?: string;
+  followers?: number;
+  engagement_rate?: number;
+  authenticity?: AuthenticitySummary | null;
+  message?: string;
+  campaign_type?: string;
+  created_at: string;
+}
+
+export interface InterestedCreatorsResponse {
+  creators: InterestedCreator[];
+  total: number;
+}
+
+export interface CreatorSummary {
+  generated_at?: string | null;
+  is_stale?: boolean;
+  creator_id?: string;
+  summary?: string;
+  strengths?: string[];
+  improvement_areas?: string[];
+  best_brand_categories?: string[];
+  recommended_content_formats?: string[];
+}
+
+export interface NotificationItem {
+  id: number;
+  kind: 'message' | 'offer' | 'delivery' | 'review' | 'interest' | 'crew' | string;
+  title: string;
+  body: string;
+  link: string;
+  created_at: string;
+  read: boolean;
+}
+
+export interface UnreadCountResponse {
+  unread: number;
+}
+
+export interface CampaignInput {
+  name: string;
+  niche: string;
+  campaign_goal: string;
+  campaign_type: string;
+  budget_per_creator?: number | null;
+  currency?: string;
+  deliverables?: string[] | null;
+  deadline?: string | null;
+  brief?: string | null;
+  platform_preferences?: string[] | null;
+  target_location?: string | null;
+  min_followers?: number | null;
+  creators_needed?: number | null;
+  is_open_to_applications?: boolean;
 }

@@ -3,6 +3,7 @@ import React from 'react';
 import { LayoutGrid, MessageCircle, Sparkles, User } from 'lucide-react-native';
 import { PeacockColors } from '../../constants/Colors';
 import { useAuth } from '../../lib/auth-context';
+import { NotificationBell } from '../../components/NotificationBell';
 
 export default function TabLayout() {
   const { user } = useAuth();
@@ -20,6 +21,7 @@ export default function TabLayout() {
         headerTitleStyle: {
           fontWeight: '600',
         },
+        headerRight: () => <NotificationBell />,
         tabBarStyle: {
           backgroundColor: PeacockColors.deep,
           borderTopWidth: 1,

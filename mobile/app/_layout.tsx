@@ -52,6 +52,55 @@ export default function RootLayout() {
             <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
             <Stack.Screen name="(auth)" options={{ headerShown: false }} />
             <Stack.Screen
+              name="profile-edit"
+              options={{
+                headerTitle: 'Edit Profile',
+                headerBackTitle: 'Back',
+              }}
+            />
+            <Stack.Screen
+              name="analytics"
+              options={{
+                headerTitle: 'Analytics & Authenticity',
+                headerBackTitle: 'Back',
+              }}
+            />
+            <Stack.Screen
+              name="discover"
+              options={{
+                headerTitle: 'Discover Creators',
+                headerBackTitle: 'Back',
+              }}
+            />
+            <Stack.Screen
+              name="interested-creators"
+              options={{
+                headerTitle: 'Interested Creators',
+                headerBackTitle: 'Back',
+              }}
+            />
+            <Stack.Screen
+              name="campaigns"
+              options={{
+                headerTitle: 'Campaigns',
+                headerBackTitle: 'Back',
+              }}
+            />
+            <Stack.Screen
+              name="analyze-profile"
+              options={{
+                headerTitle: 'AI Growth Analyzer',
+                headerBackTitle: 'Back',
+              }}
+            />
+            <Stack.Screen
+              name="notifications"
+              options={{
+                headerTitle: 'Notifications',
+                headerBackTitle: 'Back',
+              }}
+            />
+            <Stack.Screen
               name="modal"
               options={{
                 presentation: 'modal',
