@@ -23,6 +23,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  referrer: "no-referrer",
   // Template so every page can set its own title without repeating the brand.
   title: {
     default: "Crewaa — brands, businesses and creators. One crew.",

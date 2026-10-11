@@ -217,7 +217,7 @@ export default function InstagramCreatorDashboard({ userId }: { userId: number }
       )}
 
       {/* Profile Header */}
-      <ProfileHeader profile={data.profile} />
+      <ProfileHeader profile={data.profile} platform="instagram" />
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

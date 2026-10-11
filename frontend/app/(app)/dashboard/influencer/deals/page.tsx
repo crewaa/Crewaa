@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Check, Clock, Loader2, RefreshCw, Sparkles, Tag } from "lucide-react"
+import { Check, Clock, Loader2, MessageSquare, RefreshCw, Send, Sparkles, Tag, X } from "lucide-react"
 import { streamBrandDeals, getCachedBrandDeals, expressInterest, withdrawInterest } from "@/lib/ai"
 import { errorMessage } from "@/lib/types"
 import { parseApiDate } from "@/lib/time"
@@ -47,6 +47,9 @@ export default function BrandDealsPage() {
   const [deals, setDeals] = useState<DealsResponse | null>(null)
   const [error, setError] = useState("")
   const [pending, setPending] = useState<string | null>(null)
+  const [pitchModalOpen, setPitchModalOpen] = useState(false)
+  const [selectedDealForPitch, setSelectedDealForPitch] = useState<BrandDeal | null>(null)
+  const [pitchMessage, setPitchMessage] = useState("")
 
   useEffect(() => {
     async function initDeals() {
@@ -93,30 +96,58 @@ export default function BrandDealsPage() {
     }
   }
 
-  async function toggleInterest(deal: BrandDeal) {
+  function handleOpenPitch(deal: BrandDeal) {
+    setSelectedDealForPitch(deal)
+    setPitchMessage("")
+    setPitchModalOpen(true)
+  }
+
+  async function handleSubmitInterest(deal: BrandDeal, message?: string) {
     setPending(deal.opportunity_id)
     setError("")
     try {
-      if (deal.interested) {
-        await withdrawInterest(deal.opportunity_id)
-      } else {
-        await expressInterest(deal.opportunity_id)
-      }
-      // Reflect immediately; the server is the source of truth on next load.
+      await expressInterest(deal.opportunity_id, message)
       setDeals((prev) =>
         prev
           ? {
               ...prev,
               opportunities: prev.opportunities.map((o) =>
                 o.opportunity_id === deal.opportunity_id
-                  ? { ...o, interested: !deal.interested }
+                  ? { ...o, interested: true }
+                  : o
+              ),
+            }
+          : prev
+      )
+      setPitchModalOpen(false)
+      setSelectedDealForPitch(null)
+      setPitchMessage("")
+    } catch (err) {
+      setError(errorMessage(err, "Could not register your interest."))
+    } finally {
+      setPending(null)
+    }
+  }
+
+  async function handleWithdrawInterest(deal: BrandDeal) {
+    setPending(deal.opportunity_id)
+    setError("")
+    try {
+      await withdrawInterest(deal.opportunity_id)
+      setDeals((prev) =>
+        prev
+          ? {
+              ...prev,
+              opportunities: prev.opportunities.map((o) =>
+                o.opportunity_id === deal.opportunity_id
+                  ? { ...o, interested: false }
                   : o
               ),
             }
           : prev
       )
     } catch (err) {
-      setError(errorMessage(err, "Could not register your interest."))
+      setError(errorMessage(err, "Could not withdraw your interest."))
     } finally {
       setPending(null)
     }
@@ -404,27 +435,165 @@ export default function BrandDealsPage() {
                       </p>
                     )}
 
-                    <button
-                      onClick={() => toggleInterest(deal)}
-                      disabled={pending === deal.opportunity_id}
-                      aria-pressed={deal.interested}
-                      className={`mt-4 flex w-full items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-medium transition disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40 ${
-                        deal.interested
-                          ? "border border-emerald-500/40 bg-emerald-500/15 text-emerald-300 hover:bg-emerald-500/25"
-                          : "bg-peacock-teal text-peacock-on-teal hover:brightness-110"
-                      }`}
-                    >
-                      {pending === deal.opportunity_id ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : deal.interested ? (
-                        <Check className="h-4 w-4" />
-                      ) : null}
-                      {deal.interested ? "Interest registered — withdraw" : "I'm interested"}
-                    </button>
+                    {deal.interested ? (
+                      <button
+                        onClick={() => handleWithdrawInterest(deal)}
+                        disabled={pending === deal.opportunity_id}
+                        aria-pressed={deal.interested}
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-500/40 bg-emerald-500/15 px-4 py-3 text-sm font-medium text-emerald-300 transition hover:bg-emerald-500/25 disabled:opacity-60 cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                      >
+                        {pending === deal.opportunity_id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Check className="h-4 w-4" />
+                        )}
+                        Interest registered — withdraw
+                      </button>
+                    ) : (
+                      <button
+                        onClick={() => handleOpenPitch(deal)}
+                        disabled={pending === deal.opportunity_id}
+                        aria-pressed={deal.interested}
+                        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-peacock-teal px-4 py-3 text-sm font-semibold text-peacock-on-teal transition hover:brightness-110 disabled:opacity-60 cursor-pointer shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                      >
+                        {pending === deal.opportunity_id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <MessageSquare className="h-4 w-4" />
+                        )}
+                        I&apos;m interested — Apply
+                      </button>
+                    )}
                   </div>
                 ))}
               </div>
             )}
+          </div>
+        )}
+
+        {/* Attach Pitch Message Modal for Creators */}
+        {pitchModalOpen && selectedDealForPitch && (
+          <div
+            role="dialog"
+            aria-modal="true"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setPitchModalOpen(false)
+                setSelectedDealForPitch(null)
+              }
+            }}
+          >
+            <div className="relative w-full max-w-lg rounded-2xl border border-white/15 bg-gradient-to-b from-peacock-surface to-peacock-deep p-6 sm:p-7 shadow-2xl">
+              {/* Header */}
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <h3 className="text-xl font-bold font-display text-white">
+                    Express Interest
+                  </h3>
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    {selectedDealForPitch.industry_hint || "Curated Brand Campaign"} ·{" "}
+                    {selectedDealForPitch.campaign_type || "Sponsored Opportunity"}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPitchModalOpen(false)
+                    setSelectedDealForPitch(null)
+                  }}
+                  className="rounded-lg p-1 text-gray-400 hover:bg-white/10 hover:text-white transition cursor-pointer"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Campaign summary pill */}
+              {(selectedDealForPitch.budget_per_creator != null ||
+                selectedDealForPitch.compensation ||
+                selectedDealForPitch.deadline) && (
+                <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-peacock-deep/80 px-3.5 py-2.5 text-xs">
+                  {selectedDealForPitch.budget_per_creator != null ? (
+                    <span className="font-semibold text-emerald-300">
+                      ₹{selectedDealForPitch.budget_per_creator.toLocaleString()} per creator
+                    </span>
+                  ) : selectedDealForPitch.compensation ? (
+                    <span className="font-semibold text-emerald-300">
+                      {selectedDealForPitch.compensation}
+                    </span>
+                  ) : null}
+                  {selectedDealForPitch.deadline && (
+                    <span className="text-gray-400">
+                      Due {new Date(selectedDealForPitch.deadline).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {/* Pitch input */}
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-gray-200">
+                  Attach a pitch message <span className="text-gray-400 font-normal">(optional)</span>:
+                </label>
+                <p className="mt-1 text-xs text-gray-400">
+                  Tell the brand why your audience is a strong match for this campaign:
+                </p>
+                <textarea
+                  value={pitchMessage}
+                  onChange={(e) => setPitchMessage(e.target.value)}
+                  placeholder="e.g. I recently reviewed similar products with 8% engagement, and my followers frequently ask for recommendations in this niche…"
+                  rows={4}
+                  maxLength={500}
+                  className="mt-2 w-full rounded-xl border border-white/10 bg-peacock-deep p-3.5 text-sm text-white placeholder-gray-500 focus:border-peacock-teal focus:outline-none focus:ring-1 focus:ring-peacock-teal transition resize-none"
+                />
+                <div className="mt-1.5 flex items-center justify-between text-[11px] text-gray-400">
+                  <span>Your contact info & Authenticity score will be shared upon applying.</span>
+                  <span>{pitchMessage.length}/500</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="mt-6 flex flex-wrap items-center justify-end gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPitchModalOpen(false)
+                    setSelectedDealForPitch(null)
+                  }}
+                  className="rounded-xl border border-white/10 px-4 py-2.5 text-sm text-gray-300 hover:bg-white/5 hover:text-white transition cursor-pointer"
+                >
+                  Cancel
+                </button>
+                {!pitchMessage.trim() && (
+                  <button
+                    type="button"
+                    disabled={pending === selectedDealForPitch.opportunity_id}
+                    onClick={() => handleSubmitInterest(selectedDealForPitch, undefined)}
+                    className="rounded-xl border border-peacock-teal/40 bg-peacock-teal/10 px-4 py-2.5 text-sm font-medium text-peacock-teal hover:bg-peacock-teal hover:text-peacock-on-teal transition cursor-pointer disabled:opacity-60"
+                  >
+                    Apply without message
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={pending === selectedDealForPitch.opportunity_id}
+                  onClick={() =>
+                    handleSubmitInterest(
+                      selectedDealForPitch,
+                      pitchMessage.trim() || undefined
+                    )
+                  }
+                  className="flex items-center gap-2 rounded-xl bg-peacock-teal px-5 py-2.5 text-sm font-semibold text-peacock-on-teal hover:brightness-110 transition cursor-pointer shadow-md disabled:opacity-60"
+                >
+                  {pending === selectedDealForPitch.opportunity_id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                  Send Application
+                </button>
+              </div>
+            </div>
           </div>
         )}
       </main>

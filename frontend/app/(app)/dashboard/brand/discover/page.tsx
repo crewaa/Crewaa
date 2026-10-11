@@ -6,10 +6,11 @@ import { useRouter } from "next/navigation"
 import {
   BadgeCheck, Instagram, MapPin, Search, Tag, Youtube,
   Megaphone, ShoppingCart, MessageCircle, IndianRupee, Lightbulb, Check, AlertTriangle,
-  CalendarDays, SlidersHorizontal, Users,
+  CalendarDays, SlidersHorizontal, Users, ExternalLink, User,
 } from "lucide-react"
 import { discoverCreators } from "@/lib/ai"
 import { Campaign, listCampaigns } from "@/lib/campaigns"
+import { getSafeImageUrl } from "@/lib/images"
 import { errorMessage } from "@/lib/types"
 import type { AuthenticitySummary } from "@/lib/authenticity"
 import { AuthenticityBadge } from "@/components/dashboard/authenticity-badge"
@@ -30,6 +31,8 @@ type RankedCreator = {
   instagram_url?: string
   youtube_username?: string
   youtube_url?: string
+  avatar_url?: string | null
+  profile_picture?: string | null
   followers?: number
   subscribers?: number
   avg_likes?: number
@@ -508,37 +511,64 @@ export default function DiscoverCreatorsPage() {
                   key={creator.creator_id + i}
                   className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-6 transition-all duration-300 hover:border-white/20"
                 >
-                  {/* Identity — the raw database id used to be printed here */}
+                  {/* Identity Header with Profile Picture */}
                   <div className="flex items-start justify-between mb-4 gap-4">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="text-xl font-semibold text-white">
-                          {creator.creator_name || "Creator"}
-                        </h3>
-                        {creator.is_verified && (
-                          <BadgeCheck
-                            className="h-4 w-4 text-sky-400"
-                            aria-label="Verified account"
+                    <div className="flex items-start gap-3.5 min-w-0">
+                      {/* Avatar */}
+                      <div className="relative shrink-0">
+                        {creator.avatar_url || creator.profile_picture ? (
+                          <img
+                            src={getSafeImageUrl((creator.profile_picture || creator.avatar_url)!)}
+                            alt={creator.creator_name || "Creator"}
+                            referrerPolicy="no-referrer"
+                            className="h-12 w-12 rounded-full object-cover border-2 border-peacock-teal/60 bg-peacock-surface"
+                            onError={(e) => {
+                              const target = e.currentTarget
+                              target.style.display = "none"
+                              const fallback = target.nextElementSibling as HTMLElement
+                              if (fallback) fallback.style.display = "flex"
+                            }}
                           />
-                        )}
+                        ) : null}
+                        <div
+                          className={`flex h-12 w-12 items-center justify-center rounded-full border-2 border-peacock-teal/60 bg-peacock-surface text-peacock-teal ${
+                            (creator.avatar_url || creator.profile_picture) ? "hidden" : "flex"
+                          }`}
+                        >
+                          <User className="h-6 w-6" />
+                        </div>
                       </div>
 
-                      <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400">
-                        {creator.category && (
-                          <span className="flex items-center gap-1">
-                            <Tag className="h-3.5 w-3.5" /> {creator.category}
-                          </span>
-                        )}
-                        {creator.location && (
-                          <span className="flex items-center gap-1">
-                            <MapPin className="h-3.5 w-3.5" /> {creator.location}
-                          </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="text-xl font-semibold text-white">
+                            {creator.creator_name || "Creator"}
+                          </h3>
+                          {creator.is_verified && (
+                            <BadgeCheck
+                              className="h-4 w-4 text-sky-400 shrink-0"
+                              aria-label="Verified account"
+                            />
+                          )}
+                        </div>
+
+                        <div className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-gray-400">
+                          {creator.category && (
+                            <span className="flex items-center gap-1">
+                              <Tag className="h-3.5 w-3.5" /> {creator.category}
+                            </span>
+                          )}
+                          {creator.location && (
+                            <span className="flex items-center gap-1">
+                              <MapPin className="h-3.5 w-3.5" /> {creator.location}
+                            </span>
+                          )}
+                        </div>
+
+                        {creator.bio && (
+                          <p className="mt-2 text-sm text-gray-400 line-clamp-2">{creator.bio}</p>
                         )}
                       </div>
-
-                      {creator.bio && (
-                        <p className="mt-2 text-sm text-gray-400 line-clamp-2">{creator.bio}</p>
-                      )}
                     </div>
 
                     <span className={`shrink-0 px-3 py-1 rounded-full text-xs font-medium border ${fitColors[creator.fit_level] || fitColors["Low"]}`}>
@@ -568,29 +598,31 @@ export default function DiscoverCreatorsPage() {
                     )}
                   </div>
 
-                  {/* Where to find them */}
-                  {(creator.instagram_url || creator.youtube_url) && (
+                  {/* Where to find them (Interactive Links) */}
+                  {(creator.instagram_url || creator.instagram_username || creator.youtube_url || creator.youtube_username) && (
                     <div className="mb-4 flex flex-wrap gap-2">
-                      {creator.instagram_url && (
+                      {(creator.instagram_url || creator.instagram_username) && (
                         <a
-                          href={creator.instagram_url}
+                          href={creator.instagram_url || `https://instagram.com/${creator.instagram_username!.replace(/^@/, '')}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-gray-300 transition hover:border-white/25 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                          className="flex items-center gap-1.5 rounded-lg border border-pink-500/30 bg-pink-500/10 px-3 py-1.5 text-sm font-medium text-pink-300 transition hover:bg-pink-500/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                         >
-                          <Instagram className="h-3.5 w-3.5" />
-                          @{creator.instagram_username}
+                          <Instagram className="h-3.5 w-3.5 text-pink-400" />
+                          @{creator.instagram_username ? creator.instagram_username.replace(/^@/, '') : 'Instagram'}
+                          <ExternalLink className="h-3 w-3 opacity-60" />
                         </a>
                       )}
-                      {creator.youtube_url && (
+                      {(creator.youtube_url || creator.youtube_username) && (
                         <a
-                          href={creator.youtube_url}
+                          href={creator.youtube_url || `https://youtube.com/@${(creator.youtube_username || '').replace(/^@/, '')}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/5 px-3 py-1.5 text-sm text-gray-300 transition hover:border-white/25 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+                          className="flex items-center gap-1.5 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-sm font-medium text-red-300 transition hover:bg-red-500/20 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
                         >
-                          <Youtube className="h-3.5 w-3.5" />
-                          {creator.youtube_username}
+                          <Youtube className="h-3.5 w-3.5 text-red-400" />
+                          {creator.youtube_username || 'YouTube'}
+                          <ExternalLink className="h-3 w-3 opacity-60" />
                         </a>
                       )}
                     </div>
@@ -629,12 +661,22 @@ export default function DiscoverCreatorsPage() {
                     </div>
                   )}
 
-                  <Link
-                    href={`/dashboard/brand/creators/${creator.creator_id}`}
-                    className="mt-5 inline-flex items-center gap-2 text-sm font-medium text-peacock-teal transition hover:gap-3"
-                  >
-                    View full profile <span aria-hidden>→</span>
-                  </Link>
+                  <div className="mt-5 flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-white/5">
+                    <Link
+                      href={`/dashboard/brand/creators/${creator.creator_id}`}
+                      className="inline-flex items-center gap-2 text-sm font-medium text-peacock-teal transition hover:gap-3"
+                    >
+                      View full profile <span aria-hidden>→</span>
+                    </Link>
+
+                    <Link
+                      href="/dashboard/messages"
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-white/10 transition"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 text-peacock-teal" />
+                      Contact / Chat
+                    </Link>
+                  </div>
                 </div>
               ))}
             </div>

@@ -119,8 +119,43 @@ export async function withdrawInterest(opportunityId: string) {
   return res.data
 }
 
-export async function getInterestedCreators() {
-  const res = await api.get("/ai/interested-creators")
+export interface CampaignSummary {
+  id: number
+  name: string
+  count: number
+}
+
+export interface InterestedCreator {
+  interest_id: number
+  creator_id: number
+  creator_name?: string | null
+  avatar_url?: string | null
+  profile_picture?: string | null
+  email: string
+  category?: string | null
+  location?: string | null
+  instagram_username?: string | null
+  youtube_username?: string | null
+  followers?: number | null
+  subscribers?: number | null
+  engagement_rate?: number | null
+  authenticity?: AuthenticitySummary | null
+  message?: string | null
+  campaign_id?: number | null
+  campaign_name?: string | null
+  campaign_type?: string | null
+  created_at: string
+}
+
+export interface InterestedCreatorsResponse {
+  creators: InterestedCreator[]
+  total: number
+  campaigns: CampaignSummary[]
+}
+
+export async function getInterestedCreators(campaignId?: number): Promise<InterestedCreatorsResponse> {
+  const params = campaignId ? { campaign_id: campaignId } : undefined
+  const res = await api.get("/ai/interested-creators", { params })
   return res.data
 }
 
@@ -128,6 +163,8 @@ export async function getInterestedCreators() {
 export interface CreatorProfileForBrand {
   creator_id: number
   creator_name: string | null
+  avatar_url?: string | null
+  profile_picture?: string | null
   category: string | null
   location: string | null
   primary_platform: string | null

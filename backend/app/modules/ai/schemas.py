@@ -71,6 +71,7 @@ class RankedCreator(BaseModel):
     youtube_username: str | None = None
     youtube_url: str | None = None
     avatar_url: str | None = None
+    profile_picture: str | None = None
     followers: int | None = None
     subscribers: int | None = None
     avg_likes: int | None = None
@@ -173,6 +174,12 @@ class InterestRequest(BaseModel):
     message: str | None = None
 
 
+class CampaignSummary(BaseModel):
+    id: int
+    name: str
+    count: int
+
+
 class InterestedCreator(BaseModel):
     """A creator who has raised their hand, as the brand sees them."""
     interest_id: int
@@ -190,6 +197,8 @@ class InterestedCreator(BaseModel):
     engagement_rate: float | None = None
     authenticity: AuthenticitySummary | None = None
     message: str | None = None
+    campaign_id: int | None = None
+    campaign_name: str | None = None
     campaign_type: str | None = None
     created_at: datetime
 
@@ -197,6 +206,7 @@ class InterestedCreator(BaseModel):
 class InterestedCreatorsResponse(BaseModel):
     creators: list[InterestedCreator]
     total: int
+    campaigns: list[CampaignSummary] = []
 
 
 class CreatorProfileForBrand(BaseModel):

@@ -215,6 +215,7 @@ export default function YouTubeCreatorDashboard({ userId }: { userId: number }) 
 
       {/* Channel Header */}
       <ProfileHeader 
+        platform="youtube"
         profile={{
           full_name: data.channel.title,
           username: data.channel.username,
@@ -222,6 +223,10 @@ export default function YouTubeCreatorDashboard({ userId }: { userId: number }) 
           bio: data.channel.description,
           is_verified: data.channel.is_verified,
           scraped_at: data.channel.scraped_at,
+          subscribers: data.channel.subscribers,
+          total_views: data.channel.total_views,
+          total_videos: data.channel.total_videos,
+          platform: "youtube",
         }}
       />
 

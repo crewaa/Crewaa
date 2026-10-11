@@ -468,10 +468,10 @@ export default function CampaignsPage() {
 
                 <div className="flex flex-wrap gap-2">
                   <button
-                    onClick={() => router.push("/dashboard/brand/interested")}
-                    className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300 transition hover:border-white/25 hover:text-white"
+                    onClick={() => router.push(`/dashboard/brand/interested?campaign_id=${c.id}`)}
+                    className="rounded-lg border border-peacock-teal/30 bg-peacock-teal/10 px-3.5 py-2 text-sm font-medium text-peacock-teal transition hover:bg-peacock-teal hover:text-peacock-on-teal"
                   >
-                    View responses
+                    View responses {c.interested_count > 0 ? `(${c.interested_count})` : ""}
                   </button>
                   {c.status === "active" && (
                     <button

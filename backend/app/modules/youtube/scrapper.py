@@ -153,7 +153,11 @@ async def scrape_youtube_channel(username: str) -> Dict[str, Any]:
                 "username": username,
                 "title": snippet.get("title"),
                 "description": snippet.get("description"),
-                "profile_picture": snippet.get("thumbnails", {}).get("default", {}).get("url"),
+                "profile_picture": (
+                    snippet.get("thumbnails", {}).get("high", {}).get("url")
+                    or snippet.get("thumbnails", {}).get("medium", {}).get("url")
+                    or snippet.get("thumbnails", {}).get("default", {}).get("url")
+                ),
                 # Hidden subscriber counts come back absent; 0 means "unknown" here.
                 "subscribers": int(stats.get("subscriberCount", 0) or 0),
                 "total_views": int(stats.get("viewCount", 0) or 0),

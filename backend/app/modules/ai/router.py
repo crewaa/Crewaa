@@ -8,7 +8,7 @@ import uuid
 from collections import defaultdict
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, or_
@@ -34,6 +34,7 @@ from app.modules.ai.schemas import (
     CreatorProfileForBrand,
     InterestRequest,
     InterestedCreator,
+    CampaignSummary,
     InterestedCreatorsResponse,
 )
 from app.modules.authenticity.service import summaries_for
@@ -262,7 +263,7 @@ def _headline_stats(payload: dict) -> dict:
     was already assembled for the model — no extra queries.
     """
     stats: dict = {
-        "avatar_url": None, "followers": None, "subscribers": None,
+        "avatar_url": None, "profile_picture": None, "followers": None, "subscribers": None,
         "avg_likes": None, "avg_comments": None,
         "engagement_rate": None, "is_verified": None,
     }
@@ -277,10 +278,12 @@ def _headline_stats(payload: dict) -> dict:
             stats["is_verified"] = platform.get("verified")
             if platform.get("profile_picture"):
                 stats["avatar_url"] = platform.get("profile_picture")
+                stats["profile_picture"] = platform.get("profile_picture")
         elif platform.get("platform") == "youtube":
             stats["subscribers"] = platform.get("subscribers")
             if not stats.get("avatar_url") and platform.get("profile_picture"):
                 stats["avatar_url"] = platform.get("profile_picture")
+                stats["profile_picture"] = platform.get("profile_picture")
 
     return stats
 
@@ -1355,6 +1358,7 @@ async def withdraw_interest(
 
 @router.get("/interested-creators", response_model=InterestedCreatorsResponse)
 async def list_interested_creators(
+    campaign_id: int | None = Query(None),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -1368,32 +1372,79 @@ async def list_interested_creators(
     if current_user.role != "BRAND":
         raise HTTPException(403, "Only brands can view interested creators")
 
-    rows = (await db.execute(
-        select(OpportunityInterest, User, CreatorProfile)
-        .join(User, User.id == OpportunityInterest.creator_id)
-        .join(CreatorProfile, CreatorProfile.user_id == OpportunityInterest.creator_id)
+    # Fetch all campaigns belonging to this brand to build the campaign list & breakdown
+    brand_campaigns_result = await db.execute(
+        select(Campaign).where(Campaign.brand_id == current_user.id).order_by(Campaign.created_at.desc())
+    )
+    brand_campaigns = brand_campaigns_result.scalars().all()
+    campaign_map = {c.id: c.name for c in brand_campaigns}
+
+    # Fetch all interested rows for this brand (unfiltered) to calculate counts per campaign
+    all_interests_result = await db.execute(
+        select(OpportunityInterest.campaign_id)
         .where(
             OpportunityInterest.brand_id == current_user.id,
             OpportunityInterest.status == InterestStatus.INTERESTED,
         )
-        .order_by(OpportunityInterest.created_at.desc())
-    )).all()
+    )
+    all_interests = all_interests_result.scalars().all()
+
+    # Campaign counts
+    counts: dict[int | None, int] = defaultdict(int)
+    for cid in all_interests:
+        counts[cid] += 1
+
+    campaign_summaries = []
+    for c in brand_campaigns:
+        campaign_summaries.append(CampaignSummary(
+            id=c.id,
+            name=c.name,
+            count=counts.get(c.id, 0),
+        ))
+    for cid, cnt in counts.items():
+        if cid is not None and cid not in campaign_map:
+            campaign_summaries.append(CampaignSummary(
+                id=cid,
+                name=f"Campaign #{cid}",
+                count=cnt,
+            ))
+
+    # Query for creators, applying campaign_id filter if provided
+    query = (
+        select(OpportunityInterest, User, CreatorProfile, Campaign)
+        .join(User, User.id == OpportunityInterest.creator_id)
+        .join(CreatorProfile, CreatorProfile.user_id == OpportunityInterest.creator_id)
+        .outerjoin(Campaign, Campaign.id == OpportunityInterest.campaign_id)
+        .where(
+            OpportunityInterest.brand_id == current_user.id,
+            OpportunityInterest.status == InterestStatus.INTERESTED,
+        )
+    )
+    if campaign_id is not None:
+        query = query.where(OpportunityInterest.campaign_id == campaign_id)
+
+    query = query.order_by(OpportunityInterest.created_at.desc())
+    rows = (await db.execute(query)).all()
 
     if not rows:
-        return InterestedCreatorsResponse(creators=[], total=0)
+        return InterestedCreatorsResponse(creators=[], total=0, campaigns=campaign_summaries)
 
-    profiles = [profile for _, _, profile in rows]
+    profiles = [profile for _, _, profile, _ in rows]
     payloads = await _build_creator_payloads(profiles, db)
     authenticity = await summaries_for(db, [p.user_id for p in profiles])
 
     creators = []
-    for interest, user, profile in rows:
+    for interest, user, profile, campaign_obj in rows:
         stats = _headline_stats(payloads.get(profile.user_id, {}))
         try:
             snapshot = json.loads(interest.opportunity_snapshot or "{}")
         except (json.JSONDecodeError, TypeError):
             snapshot = {}
         campaign_type = snapshot.get("campaign_type") if isinstance(snapshot, dict) else None
+        if not campaign_type and campaign_obj:
+            campaign_type = campaign_obj.campaign_type
+
+        c_name = campaign_obj.name if campaign_obj else (campaign_map.get(interest.campaign_id) if interest.campaign_id else None)
 
         creators.append(InterestedCreator(
             interest_id=interest.id,
@@ -1410,11 +1461,13 @@ async def list_interested_creators(
             engagement_rate=stats.get("engagement_rate"),
             authenticity=authenticity.get(profile.user_id),
             message=interest.message,
+            campaign_id=interest.campaign_id,
+            campaign_name=c_name,
             campaign_type=campaign_type,
             created_at=interest.created_at,
         ))
 
-    return InterestedCreatorsResponse(creators=creators, total=len(creators))
+    return InterestedCreatorsResponse(creators=creators, total=len(creators), campaigns=campaign_summaries)
 
 
 @router.get("/creators/{creator_id}", response_model=CreatorProfileForBrand)

@@ -152,3 +152,31 @@ app.include_router(authenticity_router)
 app.include_router(refresh_router)
 app.include_router(waitlist_router)
 app.include_router(email_router)
+
+
+@app.get("/proxy/image")
+async def proxy_image(url: str):
+    if not (url.startswith("http://") or url.startswith("https://")):
+        return Response(status_code=400)
+    import httpx
+    from fastapi.responses import Response as RawResponse
+    async with httpx.AsyncClient() as client:
+        try:
+            resp = await client.get(url, headers={
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                "Accept": "image/*",
+            })
+            if resp.status_code != 200:
+                return RawResponse(status_code=resp.status_code)
+            return RawResponse(
+                content=resp.content,
+                media_type=resp.headers.get("content-type", "image/jpeg"),
+                headers={
+                    "Cache-Control": "public, max-age=86400",
+                    "Cross-Origin-Resource-Policy": "cross-origin",
+                    "Access-Control-Allow-Origin": "*",
+                },
+            )
+        except Exception:
+            return RawResponse(status_code=502)
+

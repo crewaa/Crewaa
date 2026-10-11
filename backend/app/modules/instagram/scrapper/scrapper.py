@@ -33,7 +33,13 @@ async def scrape_instagram(username: str) -> Dict[str, Any]:
             "username": raw_data.get("username") or raw_data.get("id") or username,
             "full_name": raw_data.get("fullName", ""),
             "bio": raw_data.get("biography", ""),
-            "profile_picture": raw_data.get("profilePicUrl", ""),
+            "profile_picture": (
+                raw_data.get("profilePicUrlHD")
+                or raw_data.get("profilePicUrl")
+                or raw_data.get("profile_pic_url_hd")
+                or raw_data.get("profile_pic_url")
+                or ""
+            ),
             "followers": int(raw_data.get("followersCount") or raw_data.get("followers") or 0),
             "following": int(raw_data.get("followsCount") or raw_data.get("followees") or 0),
             "posts_count": int(raw_data.get("postsCount") or 0),
