@@ -623,11 +623,11 @@ export default function DiscoverCreatorsScreen() {
                       />
                     </View>
                     <Button
-                      title="Contact / Chat"
+                      title="Contact / Message"
                       variant="primary"
                       size="sm"
                       icon={<MessageCircle size={14} color={PeacockColors.onTeal} />}
-                      onPress={() => router.push('/(tabs)/messages')}
+                      onPress={() => router.push({ pathname: '/creator-profile', params: { id: creator.creator_id } })}
                     />
                   </View>
                 </Card>

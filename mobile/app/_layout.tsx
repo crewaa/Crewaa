@@ -108,6 +108,12 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="chat"
+              options={{
+                headerShown: false,
+              }}
+            />
+            <Stack.Screen
               name="modal"
               options={{
                 presentation: 'modal',

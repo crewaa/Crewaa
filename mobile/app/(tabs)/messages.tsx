@@ -2,6 +2,7 @@ import React from 'react';
 import {
   ActivityIndicator,
   FlatList,
+  Image,
   Pressable,
   RefreshControl,
   Text,
@@ -33,6 +34,7 @@ export default function MessagesScreen() {
       return res.data;
     },
     enabled: !!user,
+    refetchInterval: 6000,
   });
 
   if (!user) {
@@ -68,26 +70,40 @@ export default function MessagesScreen() {
 
   const renderThreadItem = ({ item }: { item: ThreadSummary }) => (
     <Pressable
-      onPress={() => router.push('/modal')}
+      onPress={() => router.push({ pathname: '/chat' as any, params: { interestId: item.interest_id } })}
       style={({ pressed }) => [{ opacity: pressed ? 0.8 : 1 }]}
     >
       <Card style={{ marginBottom: 14, flexDirection: 'row', alignItems: 'center', padding: 16 }}>
         {/* Avatar */}
-        <View
-          style={{
-            height: 48,
-            width: 48,
-            borderRadius: 24,
-            backgroundColor: PeacockColors.raised,
-            borderWidth: 1,
-            borderColor: PeacockColors.line,
-            alignItems: 'center',
-            justifyContent: 'center',
-            marginRight: 14,
-          }}
-        >
-          <User size={22} color={PeacockColors.teal} />
-        </View>
+        {item.counterpart.avatar_url ? (
+          <Image
+            source={{ uri: item.counterpart.avatar_url }}
+            style={{
+              height: 48,
+              width: 48,
+              borderRadius: 24,
+              borderWidth: 1.5,
+              borderColor: PeacockColors.teal,
+              marginRight: 14,
+            }}
+          />
+        ) : (
+          <View
+            style={{
+              height: 48,
+              width: 48,
+              borderRadius: 24,
+              backgroundColor: PeacockColors.raised,
+              borderWidth: 1,
+              borderColor: PeacockColors.line,
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginRight: 14,
+            }}
+          >
+            <User size={22} color={PeacockColors.teal} />
+          </View>
+        )}
 
         {/* Content */}
         <View style={{ flex: 1, marginRight: 8 }}>

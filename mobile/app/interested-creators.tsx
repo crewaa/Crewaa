@@ -339,7 +339,7 @@ export default function InterestedCreatorsScreen() {
                   variant="primary"
                   size="sm"
                   icon={<MessageCircle size={13} color={PeacockColors.onTeal} />}
-                  onPress={() => router.push('/(tabs)/messages')}
+                  onPress={() => router.push({ pathname: '/chat' as any, params: { interestId: item.interest_id } })}
                   style={{ flex: 1 }}
                 />
               </View>

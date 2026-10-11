@@ -241,6 +241,13 @@ export interface Counterpart {
   name: string;
   subtitle?: string;
   location?: string;
+  avatar_url?: string | null;
+}
+
+export interface StartThreadRequest {
+  creator_id: number;
+  campaign_id?: number | null;
+  message?: string | null;
 }
 
 export interface MessageOut {

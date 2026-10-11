@@ -2,10 +2,14 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  KeyboardAvoidingView,
   Linking,
+  Modal,
+  Platform,
   RefreshControl,
   ScrollView,
   Text,
+  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
@@ -18,20 +22,23 @@ import {
   Mail,
   MapPin,
   MessageCircle,
+  Send,
   ShieldCheck,
   Star,
   Tag,
   TrendingUp,
   User,
   Users,
+  X,
 } from 'lucide-react-native';
 import { api } from '../lib/api';
+import { getThreadByCreator, startThread } from '../lib/messages';
 import { Card } from '../components/ui/Card';
 import { Badge } from '../components/ui/Badge';
 import { Button } from '../components/ui/Button';
 import { InstagramIcon, YoutubeIcon } from '../components/icons/SocialIcons';
 import { PeacockColors } from '../constants/Colors';
-import { CreatorProfileForBrand, PublicReviews } from '../types';
+import { Campaign, CreatorProfileForBrand, PublicReviews } from '../types';
 
 function compact(n?: number | null): string {
   if (n === undefined || n === null) return '—';
@@ -45,6 +52,55 @@ export default function CreatorProfileScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const creatorId = Number(params.id);
   const [avatarImgError, setAvatarImgError] = useState(false);
+
+  const [messageModalVisible, setMessageModalVisible] = useState(false);
+  const [pitchMessage, setPitchMessage] = useState('');
+  const [selectedCampaignId, setSelectedCampaignId] = useState<number | undefined>(undefined);
+  const [startingChat, setStartingChat] = useState(false);
+
+  // Check if active thread already exists
+  const { data: threadData } = useQuery({
+    queryKey: ['thread-by-creator', creatorId],
+    queryFn: () => getThreadByCreator(creatorId),
+    enabled: Number.isInteger(creatorId) && creatorId > 0,
+  });
+  const existingThreadId = threadData?.interest_id;
+
+  // Active campaigns list
+  const { data: campaigns } = useQuery<Campaign[]>({
+    queryKey: ['brand-campaigns-list'],
+    queryFn: async () => {
+      try {
+        const res = await api.get<Campaign[]>('/campaigns');
+        return res.data;
+      } catch {
+        return [];
+      }
+    },
+  });
+
+  const handleOpenChat = () => {
+    if (existingThreadId) {
+      router.push({ pathname: '/chat' as any, params: { interestId: existingThreadId } });
+    } else {
+      setMessageModalVisible(true);
+    }
+  };
+
+  const handleStartConversation = async () => {
+    if (!pitchMessage.trim() || startingChat) return;
+    setStartingChat(true);
+    try {
+      const thread = await startThread(creatorId, pitchMessage.trim(), selectedCampaignId);
+      setMessageModalVisible(false);
+      setPitchMessage('');
+      router.push({ pathname: '/chat' as any, params: { interestId: thread.interest_id } });
+    } catch {
+      // quiet error
+    } finally {
+      setStartingChat(false);
+    }
+  };
 
   // Query creator details as seen by brand
   const {
@@ -260,8 +316,16 @@ export default function CreatorProfileScreen() {
           </Text>
         ) : null}
 
-        {/* Social Direct Navigation Actions */}
-        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 16 }}>
+        {/* Actions Bar: Message Creator & Social Links */}
+        <View style={{ gap: 10, marginTop: 16 }}>
+          <Button
+            title={existingThreadId ? 'Chat / Open Messages' : 'Message Creator'}
+            variant="primary"
+            icon={<MessageCircle size={16} color={PeacockColors.onTeal} />}
+            onPress={handleOpenChat}
+          />
+
+          <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}>
           {creator.instagram_username ? (
             <TouchableOpacity
               activeOpacity={0.8}
@@ -314,7 +378,8 @@ export default function CreatorProfileScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-      </Card>
+      </View>
+    </Card>
 
       {/* Performance Metrics Tiles */}
       <View style={{ flexDirection: 'row', gap: 10, marginBottom: 16 }}>
@@ -505,14 +570,146 @@ export default function CreatorProfileScreen() {
       </Card>
 
       {/* Action Footer */}
-      <View style={{ gap: 10 }}>
+      <View style={{ gap: 10, marginBottom: 24 }}>
         <Button
-          title="Open Conversation / Negotiate"
+          title={existingThreadId ? 'Open Conversation Thread' : 'Message Creator / Negotiate'}
           variant="primary"
           icon={<MessageCircle size={16} color={PeacockColors.onTeal} />}
-          onPress={() => router.push('/(tabs)/messages')}
+          onPress={handleOpenChat}
         />
       </View>
+
+      {/* Message / Outreach Modal */}
+      <Modal
+        visible={messageModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setMessageModalVisible(false)}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={{
+            flex: 1,
+            backgroundColor: 'rgba(0, 0, 0, 0.75)',
+            justifyContent: 'center',
+            alignItems: 'center',
+            padding: 20,
+          }}
+        >
+          <View
+            style={{
+              width: '100%',
+              maxWidth: 420,
+              backgroundColor: PeacockColors.surface,
+              borderRadius: 20,
+              padding: 20,
+              borderWidth: 1,
+              borderColor: PeacockColors.line,
+            }}
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+              <Text style={{ color: PeacockColors.text, fontSize: 18, fontWeight: '700' }}>
+                Message {creator?.creator_name || 'Creator'}
+              </Text>
+              <TouchableOpacity onPress={() => setMessageModalVisible(false)} style={{ padding: 4 }}>
+                <X size={20} color={PeacockColors.muted} />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={{ color: PeacockColors.muted, fontSize: 13, marginBottom: 16, lineHeight: 18 }}>
+              Send an outreach pitch to start a continuous conversation thread.
+            </Text>
+
+            {/* Campaign Selection (if campaigns exist) */}
+            {campaigns && campaigns.length > 0 ? (
+              <View style={{ marginBottom: 14 }}>
+                <Text style={{ color: PeacockColors.text, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
+                  Link Campaign (Optional)
+                </Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flexDirection: 'row' }}>
+                  <TouchableOpacity
+                    onPress={() => setSelectedCampaignId(undefined)}
+                    style={{
+                      paddingHorizontal: 12,
+                      paddingVertical: 6,
+                      borderRadius: 10,
+                      backgroundColor: selectedCampaignId === undefined ? PeacockColors.teal : PeacockColors.deep,
+                      marginRight: 8,
+                      borderWidth: 1,
+                      borderColor: selectedCampaignId === undefined ? PeacockColors.teal : PeacockColors.line,
+                    }}
+                  >
+                    <Text style={{ color: selectedCampaignId === undefined ? PeacockColors.onTeal : PeacockColors.muted, fontSize: 12, fontWeight: '600' }}>
+                      General Inquiry
+                    </Text>
+                  </TouchableOpacity>
+                  {campaigns.map((c) => (
+                    <TouchableOpacity
+                      key={c.id}
+                      onPress={() => setSelectedCampaignId(c.id)}
+                      style={{
+                        paddingHorizontal: 12,
+                        paddingVertical: 6,
+                        borderRadius: 10,
+                        backgroundColor: selectedCampaignId === c.id ? PeacockColors.teal : PeacockColors.deep,
+                        marginRight: 8,
+                        borderWidth: 1,
+                        borderColor: selectedCampaignId === c.id ? PeacockColors.teal : PeacockColors.line,
+                      }}
+                    >
+                      <Text style={{ color: selectedCampaignId === c.id ? PeacockColors.onTeal : PeacockColors.text, fontSize: 12, fontWeight: '600' }}>
+                        {c.name}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            ) : null}
+
+            <Text style={{ color: PeacockColors.text, fontSize: 12, fontWeight: '600', marginBottom: 6 }}>
+              Pitch Message
+            </Text>
+            <TextInput
+              value={pitchMessage}
+              onChangeText={setPitchMessage}
+              placeholder={`Hi ${creator?.creator_name || 'there'}, we'd love to collaborate with you on...`}
+              placeholderTextColor={PeacockColors.muted}
+              multiline
+              numberOfLines={4}
+              style={{
+                backgroundColor: PeacockColors.deep,
+                borderRadius: 12,
+                borderWidth: 1,
+                borderColor: PeacockColors.line,
+                color: PeacockColors.text,
+                padding: 12,
+                fontSize: 14,
+                minHeight: 90,
+                textAlignVertical: 'top',
+                marginBottom: 20,
+              }}
+            />
+
+            <View style={{ flexDirection: 'row', gap: 10 }}>
+              <Button
+                title="Cancel"
+                variant="outline"
+                onPress={() => setMessageModalVisible(false)}
+                style={{ flex: 1 }}
+              />
+              <Button
+                title="Send Message"
+                variant="primary"
+                loading={startingChat}
+                disabled={startingChat || !pitchMessage.trim()}
+                icon={<Send size={16} color={PeacockColors.onTeal} />}
+                onPress={handleStartConversation}
+                style={{ flex: 1 }}
+              />
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </ScrollView>
   );
 }
