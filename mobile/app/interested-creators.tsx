@@ -1,11 +1,12 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   ActivityIndicator,
-  FlatList,
-  Pressable,
+  Image,
+  Linking,
   RefreshControl,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -14,6 +15,7 @@ import {
   ArrowLeft,
   Calendar,
   CheckCircle,
+  ExternalLink,
   Inbox,
   Mail,
   MapPin,
@@ -37,6 +39,39 @@ import { InterestedCreator, InterestedCreatorsResponse } from '../types';
 export default function InterestedCreatorsScreen() {
   const router = useRouter();
   const { user } = useAuth();
+
+  const openInstagram = async (username?: string) => {
+    if (!username) return;
+    const clean = username.replace(/^@/, '').trim();
+    const appUrl = `instagram://user?username=${clean}`;
+    const webUrl = `https://instagram.com/${clean}`;
+    try {
+      const can = await Linking.canOpenURL(appUrl);
+      if (can) {
+        await Linking.openURL(appUrl);
+      } else {
+        await Linking.openURL(webUrl);
+      }
+    } catch {
+      await Linking.openURL(webUrl);
+    }
+  };
+
+  const openYouTube = async (username?: string) => {
+    if (!username) return;
+    const clean = username.trim();
+    const url = clean.startsWith('http') ? clean : `https://youtube.com/@${clean.replace(/^@/, '')}`;
+    try {
+      await Linking.openURL(url);
+    } catch {}
+  };
+
+  const openEmail = async (email?: string) => {
+    if (!email) return;
+    try {
+      await Linking.openURL(`mailto:${email}`);
+    } catch {}
+  };
 
   const {
     data,
@@ -133,13 +168,44 @@ export default function InterestedCreatorsScreen() {
             <Card key={item.interest_id} elevated style={{ gap: 12 }}>
               {/* Creator Top Row */}
               <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                <View style={{ flex: 1, marginRight: 10 }}>
-                  <Text style={{ color: PeacockColors.text, fontSize: 18, fontWeight: '700' }}>
-                    {item.creator_name || 'Creator'}
-                  </Text>
-                  <Text style={{ color: PeacockColors.muted, fontSize: 12, marginTop: 2 }}>
-                    {item.category || 'Creator'} • {item.location || 'India'}
-                  </Text>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 10 }}>
+                  {item.profile_picture || item.avatar_url ? (
+                    <Image
+                      source={{ uri: (item.profile_picture || item.avatar_url)! }}
+                      style={{
+                        height: 46,
+                        width: 46,
+                        borderRadius: 23,
+                        borderWidth: 1.5,
+                        borderColor: PeacockColors.teal,
+                        backgroundColor: PeacockColors.surface,
+                      }}
+                      resizeMode="cover"
+                    />
+                  ) : (
+                    <View
+                      style={{
+                        height: 46,
+                        width: 46,
+                        borderRadius: 23,
+                        backgroundColor: PeacockColors.deep,
+                        borderWidth: 1.5,
+                        borderColor: PeacockColors.teal,
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                      }}
+                    >
+                      <User size={22} color={PeacockColors.teal} />
+                    </View>
+                  )}
+                  <View style={{ flex: 1, minWidth: 0 }}>
+                    <Text style={{ color: PeacockColors.text, fontSize: 18, fontWeight: '700' }}>
+                      {item.creator_name || 'Creator'}
+                    </Text>
+                    <Text style={{ color: PeacockColors.muted, fontSize: 12, marginTop: 2 }}>
+                      {item.category || 'Creator'} • {item.location || 'India'}
+                    </Text>
+                  </View>
                 </View>
 
                 {item.authenticity?.score != null ? (
@@ -150,26 +216,78 @@ export default function InterestedCreatorsScreen() {
                 ) : null}
               </View>
 
-              {/* Handles & Email */}
+              {/* Handles & Email (Interactive Links) */}
               <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                 {item.instagram_username ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: PeacockColors.deep, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                    <InstagramIcon size={12} color="#E1306C" />
-                    <Text style={{ color: PeacockColors.text, fontSize: 11 }}>@{item.instagram_username}</Text>
-                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => openInstagram(item.instagram_username)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 5,
+                      backgroundColor: PeacockColors.deep,
+                      paddingHorizontal: 9,
+                      paddingVertical: 5,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: 'rgba(225, 48, 108, 0.4)',
+                    }}
+                  >
+                    <InstagramIcon size={13} color="#E1306C" />
+                    <Text style={{ color: PeacockColors.text, fontSize: 11, fontWeight: '600' }}>
+                      @{item.instagram_username}
+                    </Text>
+                    <ExternalLink size={10} color={PeacockColors.muted} />
+                  </TouchableOpacity>
                 ) : null}
 
                 {item.youtube_username ? (
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: PeacockColors.deep, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                    <YoutubeIcon size={12} color="#FF0000" />
-                    <Text style={{ color: PeacockColors.text, fontSize: 11 }}>{item.youtube_username}</Text>
-                  </View>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => openYouTube(item.youtube_username)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 5,
+                      backgroundColor: PeacockColors.deep,
+                      paddingHorizontal: 9,
+                      paddingVertical: 5,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: 'rgba(255, 0, 0, 0.4)',
+                    }}
+                  >
+                    <YoutubeIcon size={13} color="#FF0000" />
+                    <Text style={{ color: PeacockColors.text, fontSize: 11, fontWeight: '600' }}>
+                      {item.youtube_username}
+                    </Text>
+                    <ExternalLink size={10} color={PeacockColors.muted} />
+                  </TouchableOpacity>
                 ) : null}
 
-                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: PeacockColors.deep, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
-                  <Mail size={12} color={PeacockColors.muted} />
-                  <Text style={{ color: PeacockColors.muted, fontSize: 11 }}>{item.email}</Text>
-                </View>
+                {item.email ? (
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => openEmail(item.email)}
+                    style={{
+                      flexDirection: 'row',
+                      alignItems: 'center',
+                      gap: 5,
+                      backgroundColor: PeacockColors.deep,
+                      paddingHorizontal: 9,
+                      paddingVertical: 5,
+                      borderRadius: 8,
+                      borderWidth: 1,
+                      borderColor: PeacockColors.line,
+                    }}
+                  >
+                    <Mail size={12} color={PeacockColors.teal} />
+                    <Text style={{ color: PeacockColors.muted, fontSize: 11, fontWeight: '500' }}>
+                      {item.email}
+                    </Text>
+                  </TouchableOpacity>
+                ) : null}
               </View>
 
               {/* Stats Bar */}
@@ -206,17 +324,23 @@ export default function InterestedCreatorsScreen() {
                 </View>
               ) : null}
 
-              {/* Applied Date & Chat Button */}
-              <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 4 }}>
-                <Text style={{ color: PeacockColors.muted, fontSize: 11 }}>
-                  Applied {new Date(item.created_at).toLocaleDateString()}
-                </Text>
+              {/* Card Actions: Full Profile + Message / Negotiate */}
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
                 <Button
-                  title="Message / Negotiate"
+                  title="View Profile"
+                  variant="outline"
+                  size="sm"
+                  icon={<User size={13} color={PeacockColors.teal} />}
+                  onPress={() => router.push({ pathname: '/creator-profile', params: { id: item.creator_id } })}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  title="Message"
                   variant="primary"
-                  icon={<MessageCircle size={14} color={PeacockColors.onTeal} />}
+                  size="sm"
+                  icon={<MessageCircle size={13} color={PeacockColors.onTeal} />}
                   onPress={() => router.push('/(tabs)/messages')}
-                  style={{ paddingVertical: 8, paddingHorizontal: 14 }}
+                  style={{ flex: 1 }}
                 />
               </View>
             </Card>

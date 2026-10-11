@@ -178,6 +178,8 @@ class InterestedCreator(BaseModel):
     interest_id: int
     creator_id: int
     creator_name: str | None = None
+    avatar_url: str | None = None
+    profile_picture: str | None = None
     #: Disclosed only because the creator opted in by expressing interest.
     email: str
     category: str | None = None
@@ -205,6 +207,8 @@ class CreatorProfileForBrand(BaseModel):
     """
     creator_id: int
     creator_name: str | None = None
+    avatar_url: str | None = None
+    profile_picture: str | None = None
     category: str | None = None
     location: str | None = None
     primary_platform: str | None = None

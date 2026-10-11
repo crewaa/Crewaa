@@ -271,6 +271,8 @@ export interface ThreadDetail {
 export interface RankedCreator {
   creator_id: string;
   creator_name?: string;
+  avatar_url?: string;
+  profile_picture?: string;
   fit_level: string;
   score_reasoning?: string[];
   risks?: string[];
@@ -305,6 +307,8 @@ export interface InterestedCreator {
   interest_id: number;
   creator_id: number;
   creator_name?: string;
+  avatar_url?: string | null;
+  profile_picture?: string | null;
   email: string;
   category?: string;
   location?: string;
@@ -363,4 +367,42 @@ export interface CampaignInput {
   min_followers?: number | null;
   creators_needed?: number | null;
   is_open_to_applications?: boolean;
+}
+
+export interface CreatorProfileForBrand {
+  creator_id: number;
+  creator_name: string | null;
+  avatar_url?: string | null;
+  profile_picture?: string | null;
+  bio: string | null;
+  category: string | null;
+  location: string | null;
+  primary_platform: string | null;
+  instagram_username: string | null;
+  instagram_url: string | null;
+  youtube_username: string | null;
+  youtube_url: string | null;
+  followers: number | null;
+  subscribers: number | null;
+  avg_likes: number | null;
+  avg_comments: number | null;
+  engagement_rate: number | null;
+  is_verified: boolean | null;
+  authenticity: AuthenticitySummary | null;
+}
+
+export interface Review {
+  id: number;
+  deal_id: number;
+  author_id: number;
+  author_role: 'brand' | 'creator';
+  rating: number;
+  comment?: string | null;
+  created_at: string;
+}
+
+export interface PublicReviews {
+  average_rating?: number | null;
+  review_count: number;
+  reviews: Review[];
 }

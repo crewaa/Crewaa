@@ -2,9 +2,11 @@ import React, { useState } from 'react';
 import {
   ActivityIndicator,
   Image,
+  Linking,
   RefreshControl,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -126,6 +128,69 @@ export default function ProfileScreen() {
       refetchCreator();
       refetchAuth();
       refetchIg();
+    }
+  };
+
+  const openInstagram = async (usernameOrUrl?: string | null) => {
+    if (!usernameOrUrl) {
+      router.push('/profile-edit' as any);
+      return;
+    }
+    const clean = usernameOrUrl.trim();
+    if (clean.startsWith('http://') || clean.startsWith('https://')) {
+      try {
+        await Linking.openURL(clean);
+        return;
+      } catch {
+        // continue to app scheme
+      }
+    }
+    const username = clean
+      .replace(/^@/, '')
+      .replace(/^https?:\/\/(www\.)?instagram\.com\//, '')
+      .replace(/\/$/, '');
+    const appUrl = `instagram://user?username=${username}`;
+    const webUrl = `https://instagram.com/${username}`;
+    try {
+      const can = await Linking.canOpenURL(appUrl);
+      if (can) {
+        await Linking.openURL(appUrl);
+      } else {
+        await Linking.openURL(webUrl);
+      }
+    } catch {
+      await Linking.openURL(webUrl);
+    }
+  };
+
+  const openYouTube = async (usernameOrUrl?: string | null) => {
+    if (!usernameOrUrl) {
+      router.push('/profile-edit' as any);
+      return;
+    }
+    const clean = usernameOrUrl.trim();
+    let url = clean;
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      const handle = clean.startsWith('@') ? clean : `@${clean}`;
+      url = `https://youtube.com/${handle}`;
+    }
+    try {
+      await Linking.openURL(url);
+    } catch {
+      // fallback
+    }
+  };
+
+  const openWebsite = async (url?: string | null) => {
+    if (!url) return;
+    let target = url.trim();
+    if (!target.startsWith('http://') && !target.startsWith('https://')) {
+      target = `https://${target}`;
+    }
+    try {
+      await Linking.openURL(target);
+    } catch {
+      // fallback
     }
   };
 
@@ -333,7 +398,15 @@ export default function ProfileScreen() {
           {/* Social Handles Status */}
           <View style={{ gap: 10, marginBottom: 16 }}>
             {/* Instagram */}
-            <View
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() =>
+                openInstagram(
+                  creatorData?.instagram_profile_link || creatorData?.instagram_username
+                )
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Open Instagram Profile"
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -342,31 +415,48 @@ export default function ProfileScreen() {
                 padding: 12,
                 borderRadius: 12,
                 borderWidth: 1,
-                borderColor: PeacockColors.line,
+                borderColor: creatorData?.instagram_username
+                  ? 'rgba(225, 48, 108, 0.35)'
+                  : PeacockColors.line,
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                 <InstagramIcon size={20} color="#E1306C" />
-                <View>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ color: PeacockColors.text, fontSize: 14, fontWeight: '600' }}>
                     Instagram
                   </Text>
-                  <Text style={{ color: PeacockColors.muted, fontSize: 12 }}>
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={{ color: PeacockColors.muted, fontSize: 12 }}
+                  >
                     {creatorData?.instagram_username
-                      ? `@${creatorData.instagram_username}`
-                      : 'Not linked'}
+                      ? `@${creatorData.instagram_username.replace(/^@/, '')}`
+                      : 'Not linked • Tap to connect'}
                   </Text>
                 </View>
               </View>
               {creatorData?.instagram_username ? (
-                <Badge label="Linked ✓" variant="ok" />
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Badge label="Linked ✓" variant="ok" />
+                  <ExternalLink size={13} color={PeacockColors.teal} />
+                </View>
               ) : (
-                <Badge label="Add Handle" variant="muted" />
+                <Badge label="+ Add Handle" variant="muted" />
               )}
-            </View>
+            </TouchableOpacity>
 
             {/* YouTube */}
-            <View
+            <TouchableOpacity
+              activeOpacity={0.7}
+              onPress={() =>
+                openYouTube(
+                  creatorData?.youtube_profile_link || creatorData?.youtube_username
+                )
+              }
+              accessibilityRole="button"
+              accessibilityLabel="Open YouTube Channel"
               style={{
                 flexDirection: 'row',
                 alignItems: 'center',
@@ -375,28 +465,37 @@ export default function ProfileScreen() {
                 padding: 12,
                 borderRadius: 12,
                 borderWidth: 1,
-                borderColor: PeacockColors.line,
+                borderColor: creatorData?.youtube_username || creatorData?.youtube_profile_link
+                  ? 'rgba(255, 0, 0, 0.35)'
+                  : PeacockColors.line,
               }}
             >
-              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1, minWidth: 0 }}>
                 <YoutubeIcon size={20} color="#FF0000" />
-                <View>
+                <View style={{ flex: 1, minWidth: 0 }}>
                   <Text style={{ color: PeacockColors.text, fontSize: 14, fontWeight: '600' }}>
                     YouTube
                   </Text>
-                  <Text style={{ color: PeacockColors.muted, fontSize: 12 }}>
+                  <Text
+                    numberOfLines={1}
+                    ellipsizeMode="tail"
+                    style={{ color: PeacockColors.muted, fontSize: 12 }}
+                  >
                     {creatorData?.youtube_username
                       ? creatorData.youtube_username
-                      : 'Not linked'}
+                      : (creatorData?.youtube_profile_link || 'Not linked • Tap to connect')}
                   </Text>
                 </View>
               </View>
-              {creatorData?.youtube_username ? (
-                <Badge label="Linked ✓" variant="ok" />
+              {creatorData?.youtube_username || creatorData?.youtube_profile_link ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Badge label="Linked ✓" variant="ok" />
+                  <ExternalLink size={13} color={PeacockColors.teal} />
+                </View>
               ) : (
-                <Badge label="Add Channel" variant="muted" />
+                <Badge label="+ Add Channel" variant="muted" />
               )}
-            </View>
+            </TouchableOpacity>
           </View>
 
           {/* Authenticity Score Teaser */}
@@ -496,12 +595,19 @@ export default function ProfileScreen() {
             </View>
 
             {brandData?.website ? (
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4 }}>
+              <TouchableOpacity
+                activeOpacity={0.7}
+                onPress={() => openWebsite(brandData.website)}
+                style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 4 }}
+              >
                 <Text style={{ color: PeacockColors.muted, fontSize: 14 }}>Website</Text>
-                <Text style={{ color: PeacockColors.blue, fontSize: 14, fontWeight: '500' }}>
-                  {brandData.website}
-                </Text>
-              </View>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <Text style={{ color: PeacockColors.blue, fontSize: 14, fontWeight: '500' }}>
+                    {brandData.website}
+                  </Text>
+                  <ExternalLink size={12} color={PeacockColors.blue} />
+                </View>
+              </TouchableOpacity>
             ) : null}
           </View>
         </Card>

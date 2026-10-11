@@ -171,6 +171,7 @@ async def _build_creator_payloads(
                 "username": ig_profile.username,
                 "verified": ig_profile.is_verified,
                 "bio": ig_profile.bio,
+                "profile_picture": ig_profile.profile_picture,
                 "followers": ig_profile.followers,
                 "following": ig_profile.following,
                 "engagement": {
@@ -197,6 +198,7 @@ async def _build_creator_payloads(
                 "username": yt_channel.username,
                 "title": yt_channel.title,
                 "description": (yt_channel.description or "")[:200],
+                "profile_picture": yt_channel.profile_picture,
                 "subscribers": yt_channel.subscribers,
                 "total_views": yt_channel.total_views,
                 "total_videos": yt_channel.total_videos,
@@ -273,8 +275,12 @@ def _headline_stats(payload: dict) -> dict:
             stats["avg_comments"] = engagement.get("avg_comments")
             stats["engagement_rate"] = engagement.get("engagement_rate")
             stats["is_verified"] = platform.get("verified")
+            if platform.get("profile_picture"):
+                stats["avatar_url"] = platform.get("profile_picture")
         elif platform.get("platform") == "youtube":
             stats["subscribers"] = platform.get("subscribers")
+            if not stats.get("avatar_url") and platform.get("profile_picture"):
+                stats["avatar_url"] = platform.get("profile_picture")
 
     return stats
 
@@ -1393,6 +1399,8 @@ async def list_interested_creators(
             interest_id=interest.id,
             creator_id=user.id,
             creator_name=profile.full_name,
+            avatar_url=stats.get("avatar_url"),
+            profile_picture=stats.get("avatar_url"),
             email=user.email,
             category=profile.category,
             location=profile.location,
@@ -1438,6 +1446,8 @@ async def get_creator_for_brand(
     return CreatorProfileForBrand(
         creator_id=creator_id,
         creator_name=profile.full_name,
+        avatar_url=stats.get("avatar_url"),
+        profile_picture=stats.get("avatar_url"),
         category=profile.category,
         location=profile.location,
         primary_platform=profile.primary_platform,
@@ -1449,5 +1459,5 @@ async def get_creator_for_brand(
         youtube_url=(profile.youtube_profile_link or (
             f"https://youtube.com/@{profile.youtube_username}" if profile.youtube_username else None)),
         authenticity=AuthenticitySummary(**summary) if summary else None,
-        **{k: v for k, v in stats.items() if k != "avatar_url"},
+        **{k: v for k, v in stats.items() if k not in ("avatar_url", "profile_picture")},
     )

@@ -3,10 +3,12 @@ import {
   ActivityIndicator,
   FlatList,
   Image,
+  Linking,
   Pressable,
   RefreshControl,
   ScrollView,
   Text,
+  TouchableOpacity,
   View,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -17,6 +19,7 @@ import {
   Check,
   ChevronDown,
   Compass,
+  ExternalLink,
   Filter,
   Flame,
   Heart,
@@ -28,6 +31,7 @@ import {
   Sparkles,
   Tag,
   TrendingUp,
+  User,
   Users,
 } from 'lucide-react-native';
 import { api } from '../lib/api';
@@ -137,6 +141,32 @@ export default function DiscoverCreatorsScreen() {
     } catch (err: any) {
       console.warn('Could not save creator', err);
     }
+  };
+
+  const openInstagram = async (username?: string | null) => {
+    if (!username) return;
+    const clean = username.replace(/^@/, '').trim();
+    const appUrl = `instagram://user?username=${clean}`;
+    const webUrl = `https://instagram.com/${clean}`;
+    try {
+      const can = await Linking.canOpenURL(appUrl);
+      if (can) {
+        await Linking.openURL(appUrl);
+      } else {
+        await Linking.openURL(webUrl);
+      }
+    } catch {
+      await Linking.openURL(webUrl);
+    }
+  };
+
+  const openYouTube = async (usernameOrUrl?: string | null) => {
+    if (!usernameOrUrl) return;
+    const clean = usernameOrUrl.trim();
+    const url = clean.startsWith('http') ? clean : `https://youtube.com/@${clean.replace(/^@/, '')}`;
+    try {
+      await Linking.openURL(url);
+    } catch {}
   };
 
   const getFitBadgeVariant = (fit: string): BadgeVariant => {
@@ -430,15 +460,46 @@ export default function DiscoverCreatorsScreen() {
               const isSaved = !!savedCreators[creator.creator_id];
               return (
                 <Card key={creator.creator_id} elevated style={{ gap: 12 }}>
-                  {/* Top Bar: Name, Fit badge, handles */}
+                  {/* Top Bar: Avatar, Name, Fit badge */}
                   <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
-                    <View style={{ flex: 1, marginRight: 10 }}>
-                      <Text style={{ color: PeacockColors.text, fontSize: 18, fontWeight: '700' }}>
-                        {creator.creator_name || 'Creator'}
-                      </Text>
-                      <Text style={{ color: PeacockColors.muted, fontSize: 12, marginTop: 2 }}>
-                        {creator.category || 'Creator'} • {creator.location || 'India'}
-                      </Text>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 10 }}>
+                      {creator.profile_picture || creator.avatar_url ? (
+                        <Image
+                          source={{ uri: (creator.profile_picture || creator.avatar_url)! }}
+                          style={{
+                            height: 46,
+                            width: 46,
+                            borderRadius: 23,
+                            borderWidth: 1.5,
+                            borderColor: PeacockColors.teal,
+                            backgroundColor: PeacockColors.surface,
+                          }}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <View
+                          style={{
+                            height: 46,
+                            width: 46,
+                            borderRadius: 23,
+                            backgroundColor: PeacockColors.deep,
+                            borderWidth: 1.5,
+                            borderColor: PeacockColors.teal,
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                          }}
+                        >
+                          <User size={22} color={PeacockColors.teal} />
+                        </View>
+                      )}
+                      <View style={{ flex: 1, minWidth: 0 }}>
+                        <Text style={{ color: PeacockColors.text, fontSize: 18, fontWeight: '700' }}>
+                          {creator.creator_name || 'Creator'}
+                        </Text>
+                        <Text style={{ color: PeacockColors.muted, fontSize: 12, marginTop: 2 }}>
+                          {creator.category || 'Creator'} • {creator.location || 'India'}
+                        </Text>
+                      </View>
                     </View>
                     <Badge
                       label={creator.fit_level.toUpperCase()}
@@ -446,19 +507,53 @@ export default function DiscoverCreatorsScreen() {
                     />
                   </View>
 
-                  {/* Handles */}
+                  {/* Handles (Interactive Direct Links) */}
                   <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
                     {creator.instagram_username ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: PeacockColors.deep, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => openInstagram(creator.instagram_username)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 5,
+                          backgroundColor: PeacockColors.deep,
+                          paddingHorizontal: 9,
+                          paddingVertical: 5,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: 'rgba(225, 48, 108, 0.4)',
+                        }}
+                      >
                         <InstagramIcon size={13} color="#E1306C" />
-                        <Text style={{ color: PeacockColors.text, fontSize: 11 }}>@{creator.instagram_username}</Text>
-                      </View>
+                        <Text style={{ color: PeacockColors.text, fontSize: 11, fontWeight: '600' }}>
+                          @{creator.instagram_username}
+                        </Text>
+                        <ExternalLink size={10} color={PeacockColors.muted} />
+                      </TouchableOpacity>
                     ) : null}
                     {creator.youtube_username ? (
-                      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: PeacockColors.deep, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 }}>
+                      <TouchableOpacity
+                        activeOpacity={0.7}
+                        onPress={() => openYouTube(creator.youtube_username)}
+                        style={{
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          gap: 5,
+                          backgroundColor: PeacockColors.deep,
+                          paddingHorizontal: 9,
+                          paddingVertical: 5,
+                          borderRadius: 8,
+                          borderWidth: 1,
+                          borderColor: 'rgba(255, 0, 0, 0.4)',
+                        }}
+                      >
                         <YoutubeIcon size={13} color="#FF0000" />
-                        <Text style={{ color: PeacockColors.text, fontSize: 11 }}>{creator.youtube_username}</Text>
-                      </View>
+                        <Text style={{ color: PeacockColors.text, fontSize: 11, fontWeight: '600' }}>
+                          {creator.youtube_username}
+                        </Text>
+                        <ExternalLink size={10} color={PeacockColors.muted} />
+                      </TouchableOpacity>
                     ) : null}
                   </View>
 
@@ -508,20 +603,31 @@ export default function DiscoverCreatorsScreen() {
                   ) : null}
 
                   {/* Actions */}
-                  <View style={{ flexDirection: 'row', gap: 10, marginTop: 4 }}>
-                    <Button
-                      title={isSaved ? 'Saved to Shortlist ✓' : 'Save Creator'}
-                      variant={isSaved ? 'secondary' : 'outline'}
-                      icon={<Bookmark size={15} color={isSaved ? PeacockColors.teal : PeacockColors.text} />}
-                      onPress={() => handleSaveCreator(creator)}
-                      style={{ flex: 1 }}
-                    />
+                  <View style={{ gap: 8, marginTop: 4 }}>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <Button
+                        title="View Profile"
+                        variant="outline"
+                        size="sm"
+                        icon={<User size={13} color={PeacockColors.teal} />}
+                        onPress={() => router.push({ pathname: '/creator-profile', params: { id: creator.creator_id } })}
+                        style={{ flex: 1 }}
+                      />
+                      <Button
+                        title={isSaved ? 'Saved ✓' : 'Save'}
+                        variant={isSaved ? 'secondary' : 'outline'}
+                        size="sm"
+                        icon={<Bookmark size={13} color={isSaved ? PeacockColors.teal : PeacockColors.text} />}
+                        onPress={() => handleSaveCreator(creator)}
+                        style={{ flex: 1 }}
+                      />
+                    </View>
                     <Button
                       title="Contact / Chat"
                       variant="primary"
-                      icon={<MessageCircle size={15} color={PeacockColors.onTeal} />}
+                      size="sm"
+                      icon={<MessageCircle size={14} color={PeacockColors.onTeal} />}
                       onPress={() => router.push('/(tabs)/messages')}
-                      style={{ flex: 1 }}
                     />
                   </View>
                 </Card>

@@ -101,6 +101,13 @@ export default function RootLayout() {
               }}
             />
             <Stack.Screen
+              name="creator-profile"
+              options={{
+                headerTitle: 'Creator Profile',
+                headerBackTitle: 'Back',
+              }}
+            />
+            <Stack.Screen
               name="modal"
               options={{
                 presentation: 'modal',
