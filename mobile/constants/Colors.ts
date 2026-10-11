@@ -12,7 +12,7 @@ export const PeacockColors = {
   text: '#EAF4F3',
   muted: '#8FB0B0',
   teal: '#26BDB0',
-  onTeal: '#03201C',
+  onTeal: '#FFFFFF',
   gold: '#D8B45A',
   goldHi: '#F1DA97',
   blue: '#4FB3D9',

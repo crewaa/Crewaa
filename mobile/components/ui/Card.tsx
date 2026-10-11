@@ -16,6 +16,7 @@ export function Card({ children, className = '', elevated = false, style, ...pro
           backgroundColor: elevated ? PeacockColors.raised : PeacockColors.surface,
           borderColor: PeacockColors.line,
         },
+        elevated ? styles.elevatedShadow : null,
         style,
       ]}
       className={`rounded-2xl p-5 border ${className}`}
@@ -31,5 +32,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 16,
     padding: 18,
+  },
+  elevatedShadow: {
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 10,
+    elevation: 3,
   },
 });

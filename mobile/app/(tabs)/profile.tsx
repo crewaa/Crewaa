@@ -325,7 +325,7 @@ export default function ProfileScreen() {
               title="Edit"
               variant="outline"
               size="sm"
-              icon={<Edit3 size={13} color={PeacockColors.text} />}
+              icon={<Edit3 size={13} color={PeacockColors.teal} />}
               onPress={() => router.push('/profile-edit' as any)}
             />
           </View>
@@ -468,7 +468,7 @@ export default function ProfileScreen() {
               title="Edit"
               variant="outline"
               size="sm"
-              icon={<Edit3 size={13} color={PeacockColors.text} />}
+              icon={<Edit3 size={13} color={PeacockColors.teal} />}
               onPress={() => router.push('/profile-edit' as any)}
             />
           </View>
@@ -538,17 +538,17 @@ export default function ProfileScreen() {
 
       {/* Actions */}
       <View style={{ gap: 12, marginTop: 4 }}>
-        <Button
+        {/* <Button
           title="Edit Profile Information"
           variant="secondary"
           icon={<Edit3 size={16} color={PeacockColors.text} />}
           onPress={() => router.push('/profile-edit' as any)}
-        />
+        /> */}
 
         <Button
           title="Log Out"
           variant="danger"
-          icon={<LogOut size={16} color={PeacockColors.text} />}
+          icon={<LogOut size={16} color={PeacockColors.danger} />}
           onPress={handleLogout}
         />
       </View>

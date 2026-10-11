@@ -53,28 +53,38 @@ export function Button({
     switch (variant) {
       case 'primary':
         return {
-          backgroundColor: PeacockColors.teal,
-          borderColor: 'transparent',
+          backgroundColor: '#16A597',
+          borderColor: '#4EEAD8',
+          borderWidth: 1.2,
+          shadowColor: '#16A597',
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.38,
+          shadowRadius: 10,
+          elevation: 5,
         };
       case 'secondary':
         return {
-          backgroundColor: PeacockColors.raised,
-          borderColor: PeacockColors.line,
+          backgroundColor: 'rgba(38, 189, 176, 0.12)',
+          borderColor: 'rgba(38, 189, 176, 0.35)',
+          borderWidth: 1,
         };
       case 'outline':
         return {
-          backgroundColor: 'transparent',
-          borderColor: PeacockColors.line,
+          backgroundColor: 'rgba(38, 189, 176, 0.08)',
+          borderColor: 'rgba(38, 189, 176, 0.35)',
+          borderWidth: 1,
         };
       case 'ghost':
         return {
           backgroundColor: 'transparent',
           borderColor: 'transparent',
+          borderWidth: 1,
         };
       case 'danger':
         return {
-          backgroundColor: PeacockColors.danger,
-          borderColor: 'transparent',
+          backgroundColor: 'rgba(242, 113, 107, 0.12)',
+          borderColor: 'rgba(242, 113, 107, 0.4)',
+          borderWidth: 1,
         };
     }
   };
@@ -83,9 +93,9 @@ export function Button({
     switch (size) {
       case 'sm':
         return {
-          paddingVertical: 7,
-          paddingHorizontal: 12,
-          borderRadius: 8,
+          paddingVertical: 8,
+          paddingHorizontal: 14,
+          borderRadius: 10,
         };
       case 'lg':
         return {
@@ -96,7 +106,7 @@ export function Button({
       case 'md':
       default:
         return {
-          paddingVertical: 14,
+          paddingVertical: 13,
           paddingHorizontal: 20,
           borderRadius: 12,
         };
@@ -106,11 +116,12 @@ export function Button({
   const getTextColor = (): string => {
     switch (variant) {
       case 'primary':
-        return PeacockColors.onTeal;
+        return '#FFFFFF';
       case 'secondary':
       case 'outline':
+        return PeacockColors.teal;
       case 'danger':
-        return PeacockColors.text;
+        return PeacockColors.danger;
       case 'ghost':
         return PeacockColors.muted;
     }
@@ -125,8 +136,8 @@ export function Button({
         };
       case 'lg':
         return {
-          fontSize: 16,
-          fontWeight: '700',
+          fontSize: 16.5,
+          fontWeight: '800',
         };
       case 'md':
       default:
@@ -144,7 +155,10 @@ export function Button({
     if (React.isValidElement(icon)) {
       const iconElement = icon as React.ReactElement<any>;
       const customColor = iconElement.props?.color;
-      const effectiveColor = customColor ?? textColor;
+      const effectiveColor =
+        !customColor || customColor === PeacockColors.onTeal || customColor === '#03201C'
+          ? textColor
+          : customColor;
       return (
         <View style={styles.iconContainer}>
           {React.cloneElement(iconElement, { color: effectiveColor })}
@@ -162,8 +176,11 @@ export function Button({
         styles.base,
         getSizeStyle(),
         getVariantStyle(),
-        state.pressed ? { opacity: 0.85 } : null,
-        disabled ? { opacity: 0.5 } : null,
+        state.pressed && {
+          transform: [{ scale: 0.975 }],
+          opacity: variant === 'primary' ? 0.92 : 0.75,
+        },
+        disabled && { opacity: 0.45 },
         typeof style === 'function' ? style(state) : style,
       ]}
       {...props}
@@ -181,6 +198,7 @@ export function Button({
               styles.text,
               getTextSizeStyle(),
               { color: textColor },
+              variant === 'primary' && styles.primaryTextShadow,
               textStyle,
             ]}
           >
@@ -194,7 +212,6 @@ export function Button({
 
 const styles = StyleSheet.create({
   base: {
-    borderWidth: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -211,5 +228,12 @@ const styles = StyleSheet.create({
   },
   text: {
     textAlign: 'center',
+    letterSpacing: 0.2,
+  },
+  primaryTextShadow: {
+    letterSpacing: 0.3,
+    textShadowColor: 'rgba(0, 32, 28, 0.45)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
   },
 });
