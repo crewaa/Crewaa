@@ -1,10 +1,11 @@
 "use client"
-
+ 
 import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, MessageCircle } from "lucide-react"
+import { ArrowLeft, Loader2, MessageCircle, User } from "lucide-react"
 
 import { listThreads, ThreadSummary } from "@/lib/messages"
+import { getSafeImageUrl } from "@/lib/images"
 import { errorMessage } from "@/lib/types"
 import { parseApiDate } from "@/lib/time"
 
@@ -31,17 +32,29 @@ export default function MessagesPage() {
   const [error, setError] = useState("")
 
   useEffect(() => {
+    let cancelled = false
     async function load() {
       try {
         const data = await listThreads()
-        setThreads(data)
+        if (!cancelled) setThreads(data)
       } catch (err) {
-        setError(errorMessage(err, "Could not load your messages."))
+        if (!cancelled) setError(errorMessage(err, "Could not load your messages."))
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     load()
+
+    const interval = setInterval(() => {
+      listThreads()
+        .then((data) => { if (!cancelled) setThreads(data) })
+        .catch(() => {})
+    }, 6000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [])
 
   return (
@@ -97,22 +110,36 @@ export default function MessagesPage() {
                 onClick={() => router.push(`/dashboard/messages/${t.interest_id}`)}
                 className="w-full rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-6 text-left transition hover:border-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
               >
-                <div className="flex flex-wrap items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-2">
-                      <h2 className="text-lg font-semibold text-white">{t.counterpart.name}</h2>
-                      {t.interest_status === "withdrawn" && (
-                        <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-gray-500">
-                          Closed
-                        </span>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <div className="flex items-center gap-4 min-w-0 flex-1">
+                    {t.counterpart.avatar_url ? (
+                      <img
+                        src={getSafeImageUrl(t.counterpart.avatar_url)}
+                        alt={t.counterpart.name}
+                        referrerPolicy="no-referrer"
+                        className="h-12 w-12 rounded-full border border-peacock-teal/50 object-cover shrink-0 shadow-sm"
+                      />
+                    ) : (
+                      <div className="flex h-12 w-12 items-center justify-center rounded-full border border-white/10 bg-white/5 text-peacock-teal shrink-0">
+                        <User className="h-6 w-6" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <h2 className="text-base sm:text-lg font-semibold text-white">{t.counterpart.name}</h2>
+                        {t.interest_status === "withdrawn" && (
+                          <span className="rounded-full border border-white/10 bg-white/5 px-2 py-0.5 text-[11px] text-gray-500">
+                            Closed
+                          </span>
+                        )}
+                      </div>
+                      {t.counterpart.subtitle && (
+                        <p className="mt-0.5 text-xs sm:text-sm text-gray-400 truncate">{t.counterpart.subtitle}</p>
+                      )}
+                      {t.last_message && (
+                        <p className="mt-1.5 truncate text-xs sm:text-sm text-gray-300">{t.last_message}</p>
                       )}
                     </div>
-                    {t.counterpart.subtitle && (
-                      <p className="mt-0.5 text-sm text-gray-500">{t.counterpart.subtitle}</p>
-                    )}
-                    {t.last_message && (
-                      <p className="mt-2 truncate text-sm text-gray-400">{t.last_message}</p>
-                    )}
                   </div>
 
                   <div className="flex shrink-0 flex-col items-end gap-2">
@@ -120,7 +147,7 @@ export default function MessagesPage() {
                       <span className="text-xs text-gray-500">{timeAgo(t.last_message_at)}</span>
                     )}
                     {t.unread_count > 0 && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-indigo-500 px-1.5 text-xs font-medium text-indigo-950">
+                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-peacock-teal px-1.5 text-xs font-bold text-peacock-on-teal shadow-sm">
                         {t.unread_count}
                       </span>
                     )}

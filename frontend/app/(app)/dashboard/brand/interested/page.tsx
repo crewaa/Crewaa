@@ -346,7 +346,7 @@ function InterestedCreatorsContent() {
                       Full profile →
                     </Link>
                     <Link
-                      href="/dashboard/messages"
+                      href={`/dashboard/messages/${c.interest_id}`}
                       className="flex items-center gap-1.5 rounded-lg bg-peacock-teal px-3.5 py-1.5 text-sm font-medium text-peacock-on-teal transition hover:brightness-110"
                     >
                       <MessageCircle className="h-3.5 w-3.5" /> Message

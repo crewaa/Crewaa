@@ -5,6 +5,7 @@ export interface Counterpart {
   name: string
   subtitle?: string
   location?: string
+  avatar_url?: string | null
 }
 
 export interface MessageOut {
@@ -54,4 +55,22 @@ export async function markRead(interestId: number): Promise<void> {
 export async function getUnreadCount(): Promise<number> {
   const res = await api.get("/messages/unread-count")
   return res.data.unread_count
+}
+
+export async function startThread(
+  creatorId: number,
+  message?: string,
+  campaignId?: number
+): Promise<ThreadDetail> {
+  const res = await api.post("/messages/start", {
+    creator_id: creatorId,
+    message: message?.trim() || undefined,
+    campaign_id: campaignId,
+  })
+  return res.data
+}
+
+export async function getThreadByCreator(creatorId: number): Promise<{ interest_id: number | null }> {
+  const res = await api.get(`/messages/threads/by-creator/${creatorId}`)
+  return res.data
 }

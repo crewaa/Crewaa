@@ -7,8 +7,8 @@
  */
 
 import { useEffect, useState } from "react"
+import { useParams, useRouter } from "next/navigation"
 import Link from "next/link"
-import { useParams } from "next/navigation"
 import {
   ArrowLeft,
   BadgeCheck,
@@ -17,18 +17,23 @@ import {
   Loader2,
   MapPin,
   MessageCircle,
+  Send,
   Star,
   User,
+  X,
   Youtube,
 } from "lucide-react"
 
 import { getCreatorForBrand, type CreatorProfileForBrand } from "@/lib/ai"
+import { Campaign, listCampaigns } from "@/lib/campaigns"
 import { getPublicReviews, type PublicReviews } from "@/lib/deal-terms"
 import { getSafeImageUrl } from "@/lib/images"
+import { getThreadByCreator, startThread } from "@/lib/messages"
 import { parseApiDate } from "@/lib/time"
 import { AuthenticityCard } from "@/components/dashboard/authenticity-card"
 import { AuthenticityBadge } from "@/components/dashboard/authenticity-badge"
 import { errorMessage } from "@/lib/types"
+import { useToast } from "@/components/ui/toast"
 
 const compact = new Intl.NumberFormat("en-US", { notation: "compact", maximumFractionDigits: 1 })
 const fmt = (n: number | null | undefined) => (n == null ? "—" : compact.format(n))
@@ -79,11 +84,20 @@ function Reviews({ data }: { data: PublicReviews | null }) {
 
 export default function BrandCreatorProfilePage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
+  const toast = useToast()
   const id = Number(params.id)
   const [creator, setCreator] = useState<CreatorProfileForBrand | null>(null)
   const [error, setError] = useState("")
   const [avatarError, setAvatarError] = useState(false)
   const [reviews, setReviews] = useState<PublicReviews | null>(null)
+
+  const [existingThreadId, setExistingThreadId] = useState<number | null>(null)
+  const [messageModalOpen, setMessageModalOpen] = useState(false)
+  const [messageDraft, setMessageDraft] = useState("")
+  const [sendingMessage, setSendingMessage] = useState(false)
+  const [campaigns, setCampaigns] = useState<Campaign[]>([])
+  const [selectedCampaignId, setSelectedCampaignId] = useState<number | undefined>(undefined)
 
   useEffect(() => {
     if (!Number.isInteger(id) || id <= 0) return
@@ -95,8 +109,46 @@ export default function BrandCreatorProfilePage() {
     getPublicReviews(id)
       .then((r) => { if (!cancelled) setReviews(r) })
       .catch(() => {})
+
+    getThreadByCreator(id)
+      .then((res) => { if (!cancelled && res.interest_id) setExistingThreadId(res.interest_id) })
+      .catch(() => {})
+
+    listCampaigns()
+      .then((camps) => {
+        if (!cancelled) {
+          setCampaigns(camps)
+          if (camps.length > 0) setSelectedCampaignId(camps[0].id)
+        }
+      })
+      .catch(() => {})
+
     return () => { cancelled = true }
   }, [id])
+
+  const handleOpenMessage = () => {
+    if (existingThreadId) {
+      router.push(`/dashboard/messages/${existingThreadId}`)
+    } else {
+      setMessageModalOpen(true)
+    }
+  }
+
+  const handleSendMessage = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!messageDraft.trim()) return
+    setSendingMessage(true)
+    try {
+      const thread = await startThread(id, messageDraft.trim(), selectedCampaignId)
+      toast.success(`Message sent! Conversation started with ${creator?.creator_name || "creator"}`)
+      setMessageModalOpen(false)
+      router.push(`/dashboard/messages/${thread.interest_id}`)
+    } catch (err) {
+      toast.error(errorMessage(err, "Failed to send message. Please try again."))
+    } finally {
+      setSendingMessage(false)
+    }
+  }
 
   const invalid = !Number.isInteger(id) || id <= 0
   const avatarUrl = creator?.profile_picture || creator?.avatar_url
@@ -153,8 +205,16 @@ export default function BrandCreatorProfilePage() {
                     </h1>
                   </div>
 
-                  {/* Social Direct Navigation Actions */}
-                  <div className="flex flex-wrap gap-2.5">
+                  {/* Social Direct Navigation Actions & Messaging */}
+                  <div className="flex flex-wrap items-center gap-2.5">
+                    <button
+                      type="button"
+                      onClick={handleOpenMessage}
+                      className="inline-flex items-center gap-2 rounded-xl bg-peacock-teal px-4 py-2 text-sm font-semibold text-peacock-on-teal transition hover:brightness-110 shadow-sm"
+                    >
+                      <MessageCircle className="h-4 w-4" />
+                      <span>{existingThreadId ? "Chat / Message" : "Message Creator"}</span>
+                    </button>
                     {creator.instagram_username && (
                       <a
                         href={creator.instagram_url || `https://instagram.com/${creator.instagram_username.replace(/^@/, "")}`}
@@ -225,17 +285,104 @@ export default function BrandCreatorProfilePage() {
               <p className="text-sm font-medium text-white">Interested in working with {creator.creator_name || "this creator"}?</p>
               <p className="text-xs text-gray-400 mt-1">Start a conversation or negotiate deal terms directly.</p>
             </div>
-            <Link
-              href="/dashboard/messages"
+            <button
+              type="button"
+              onClick={handleOpenMessage}
               className="inline-flex items-center gap-2 rounded-xl bg-peacock-teal px-5 py-2.5 text-sm font-bold text-peacock-on-teal transition hover:brightness-110 shadow-md"
             >
-              <MessageCircle className="h-4 w-4" /> Message / Negotiate
-            </Link>
+              <MessageCircle className="h-4 w-4" /> {existingThreadId ? "Open Conversation" : "Message / Negotiate"}
+            </button>
           </div>
 
           <p className="mt-6 text-xs text-gray-500">
             Contact details are shared once this creator expresses interest in one of your campaigns.
           </p>
+
+          {/* Message Creator Modal */}
+          {messageModalOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm animate-in fade-in duration-200">
+              <div className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-peacock-surface p-6 shadow-2xl">
+                <button
+                  type="button"
+                  onClick={() => setMessageModalOpen(false)}
+                  className="absolute right-4 top-4 rounded-lg p-1.5 text-gray-400 transition hover:bg-white/10 hover:text-white"
+                  aria-label="Close"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+
+                <h3 className="font-display text-xl font-bold text-white">
+                  Message {creator.creator_name || "Creator"}
+                </h3>
+                <p className="mt-1 text-xs text-gray-400">
+                  Send a direct message or pitch to initiate a collaboration. A new continuous conversation thread will be started.
+                </p>
+
+                <form onSubmit={handleSendMessage} className="mt-5 space-y-4">
+                  {campaigns.length > 0 && (
+                    <div>
+                      <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300">
+                        Link Campaign (Optional)
+                      </label>
+                      <select
+                        value={selectedCampaignId ?? ""}
+                        onChange={(e) => setSelectedCampaignId(e.target.value ? Number(e.target.value) : undefined)}
+                        className="mt-1.5 w-full rounded-xl border border-white/10 bg-peacock-deep px-3 py-2 text-sm text-white focus:border-peacock-teal focus:outline-none"
+                      >
+                        <option value="">None / General Inquiry</option>
+                        {campaigns.map((camp) => (
+                          <option key={camp.id} value={camp.id}>
+                            {camp.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-xs font-semibold uppercase tracking-wider text-gray-300">
+                      Message / Pitch
+                    </label>
+                    <textarea
+                      required
+                      rows={4}
+                      value={messageDraft}
+                      onChange={(e) => setMessageDraft(e.target.value)}
+                      placeholder={`Hi ${creator.creator_name || "there"}, we loved your profile and would love to collaborate on...`}
+                      className="mt-1.5 w-full rounded-xl border border-white/10 bg-peacock-deep p-3 text-sm text-white placeholder-gray-500 focus:border-peacock-teal focus:outline-none resize-none"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setMessageModalOpen(false)}
+                      className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-gray-300 transition hover:bg-white/5 hover:text-white"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={sendingMessage || !messageDraft.trim()}
+                      className="inline-flex items-center gap-2 rounded-xl bg-peacock-teal px-5 py-2 text-sm font-bold text-peacock-on-teal transition hover:brightness-110 disabled:opacity-50"
+                    >
+                      {sendingMessage ? (
+                        <>
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          <span>Sending…</span>
+                        </>
+                      ) : (
+                        <>
+                          <Send className="h-4 w-4" />
+                          <span>Send Message</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
         </>
       )}
     </div>

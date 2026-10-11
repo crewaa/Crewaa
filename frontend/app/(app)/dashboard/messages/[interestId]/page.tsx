@@ -2,9 +2,10 @@
 
 import { useEffect, useRef, useState } from "react"
 import { useParams, useRouter } from "next/navigation"
-import { ArrowLeft, Loader2, Send } from "lucide-react"
+import { ArrowLeft, Handshake, Loader2, Send, User } from "lucide-react"
 
 import { getThread, markRead, sendMessage, ThreadDetail } from "@/lib/messages"
+import { getSafeImageUrl } from "@/lib/images"
 import {
   DealTerms, DeliveryState, ReviewState, getDelivery, getReviews, getTerms,
 } from "@/lib/deal-terms"
@@ -34,15 +35,18 @@ export default function ThreadPage() {
 
   const [thread, setThread] = useState<ThreadDetail | null>(null)
   const [terms, setTerms] = useState<DealTerms | null>(null)
+  const [showTerms, setShowTerms] = useState(false)
   const [delivery, setDelivery] = useState<DeliveryState | null>(null)
   const [reviews, setReviews] = useState<ReviewState | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
   const [draft, setDraft] = useState("")
   const [sending, setSending] = useState(false)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    let cancelled = false
     async function load() {
       try {
         // Both in flight at once — the terms panel and the messages render
@@ -56,25 +60,64 @@ export default function ThreadPage() {
           getDelivery(interestId).catch(() => null),
           getReviews(interestId).catch(() => null),
         ])
-        setThread(data)
-        setTerms(dealTerms)
-        setDelivery(dealDelivery)
-        setReviews(dealReviews)
+        if (!cancelled) {
+          setThread(data)
+          setTerms(dealTerms)
+          setDelivery(dealDelivery)
+          setReviews(dealReviews)
+        }
         // Best-effort — an unread badge that doesn't clear is a cosmetic
         // issue, not one worth blocking the page load over.
         markRead(interestId).catch(() => {})
-        listDisputes(interestId).then(setDisputes).catch(() => {})
+        listDisputes(interestId).then((res) => { if (!cancelled) setDisputes(res) }).catch(() => {})
       } catch (err) {
-        setError(errorMessage(err, "Could not load this conversation."))
+        if (!cancelled) setError(errorMessage(err, "Could not load this conversation."))
       } finally {
-        setLoading(false)
+        if (!cancelled) setLoading(false)
       }
     }
     load()
+
+    // 4-second polling for active real-time conversation updates
+    const interval = setInterval(async () => {
+      if (document.hidden) return
+      try {
+        const fresh = await getThread(interestId)
+        if (cancelled) return
+        setThread((prev) => {
+          if (!prev) return fresh
+          if (
+            fresh.messages.length !== prev.messages.length ||
+            (fresh.messages.length > 0 &&
+              fresh.messages[fresh.messages.length - 1].id !== prev.messages[prev.messages.length - 1]?.id)
+          ) {
+            markRead(interestId).catch(() => {})
+            return fresh
+          }
+          return prev
+        })
+      } catch {
+        // silent fallback on background poll
+      }
+    }, 4000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [interestId])
 
+  const scrollToBottom = (smooth = true) => {
+    if (messagesContainerRef.current) {
+      messagesContainerRef.current.scrollTo({
+        top: messagesContainerRef.current.scrollHeight,
+        behavior: smooth ? "smooth" : "auto",
+      })
+    }
+  }
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ block: "end" })
+    scrollToBottom()
   }, [thread?.messages.length])
 
   async function handleSend(e: React.FormEvent) {
@@ -87,6 +130,7 @@ export default function ThreadPage() {
       const message = await sendMessage(interestId, body)
       setThread({ ...thread, messages: [...thread.messages, message] })
       setDraft("")
+      setTimeout(() => scrollToBottom(true), 50)
     } catch (err) {
       toast.error(errorMessage(err, "Could not send that message."))
     } finally {
@@ -97,69 +141,126 @@ export default function ThreadPage() {
   const closed = thread?.interest_status !== "interested"
 
   return (
-    <div className="relative flex h-[calc(100vh-var(--app-header,4rem))] flex-col overflow-hidden">
-      <div className="absolute inset-0 -z-10">
-        <div className="absolute top-[-20%] left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-indigo-500/15 blur-[160px]" />
+    <div className="relative flex h-[calc(100dvh-var(--app-header,4rem))] flex-col overflow-hidden">
+      <div className="absolute inset-0 -z-10 pointer-events-none">
+        <div className="absolute top-[-20%] left-1/2 h-[600px] w-[600px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-[160px]" />
       </div>
 
-      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col px-6 py-8">
-        <button
-          onClick={() => router.push("/dashboard/messages")}
-          className="mb-6 flex items-center gap-2 text-sm text-gray-400 transition hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
-        >
-          <ArrowLeft className="h-4 w-4" /> Back to Messages
-        </button>
-
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col min-h-0 px-3 sm:px-6 py-2 sm:py-3">
         {loading && (
           <div className="flex flex-1 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-peacock-teal" />
             <span className="sr-only">Loading…</span>
           </div>
         )}
 
         {error && !loading && (
-          <p
-            role="alert"
-            className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300"
-          >
-            {error}
-          </p>
+          <div className="py-8">
+            <p
+              role="alert"
+              className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-300 text-center"
+            >
+              {error}
+            </p>
+            <div className="mt-4 text-center">
+              <button
+                onClick={() => router.push("/dashboard/messages")}
+                className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm text-gray-300 hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4" /> Back to Messages
+              </button>
+            </div>
+          </div>
         )}
 
         {thread && !loading && (
-          <>
-            <div className="mb-6 flex items-start justify-between gap-4 rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-5">
-              <div>
-                <h1 className="text-xl font-semibold text-white">{thread.counterpart.name}</h1>
-                {thread.counterpart.subtitle && (
-                  <p className="mt-0.5 text-sm text-gray-500">{thread.counterpart.subtitle}</p>
+          <div className="flex flex-col flex-1 min-h-0">
+            {/* Header bar: Back arrow, Counterpart info, Deal Terms toggle, Safety Menu */}
+            <div className="shrink-0 mb-2 sm:mb-3 flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-gradient-to-br from-peacock-surface to-peacock-deep p-3 sm:p-4 shadow-lg">
+              <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
+                <button
+                  type="button"
+                  onClick={() => router.push("/dashboard/messages")}
+                  className="rounded-xl p-1.5 text-gray-400 transition hover:bg-white/10 hover:text-white shrink-0"
+                  title="Back to Messages"
+                >
+                  <ArrowLeft className="h-5 w-5" />
+                </button>
+
+                {thread.counterpart.avatar_url ? (
+                  <img
+                    src={getSafeImageUrl(thread.counterpart.avatar_url)}
+                    alt={thread.counterpart.name}
+                    referrerPolicy="no-referrer"
+                    className="h-10 w-10 sm:h-11 sm:w-11 rounded-full border-2 border-peacock-teal object-cover shrink-0 shadow-sm"
+                  />
+                ) : (
+                  <div className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full border-2 border-peacock-teal/60 bg-peacock-surface text-peacock-teal shrink-0 shadow-sm">
+                    <User className="h-5 w-5" />
+                  </div>
                 )}
+
+                <div className="min-w-0">
+                  <h1 className="text-base sm:text-lg font-semibold text-white truncate leading-tight">
+                    {thread.counterpart.name}
+                  </h1>
+                  {thread.counterpart.subtitle && (
+                    <p className="text-xs text-gray-400 truncate mt-0.5">{thread.counterpart.subtitle}</p>
+                  )}
+                </div>
               </div>
 
-              {/* In the conversation, beside their name — that is where
-                  someone is standing when they decide they need it. */}
-              <SafetyMenu
-                interestId={interestId}
-                counterpartName={thread.counterpart.name}
-                onBlockChange={setBlockState}
-              />
+              {/* Action buttons on header right */}
+              <div className="flex items-center gap-2 shrink-0">
+                {terms && (
+                  <button
+                    type="button"
+                    onClick={() => setShowTerms((v) => !v)}
+                    className={`inline-flex items-center gap-1.5 rounded-xl px-2.5 sm:px-3 py-1.5 text-xs font-semibold transition shadow-sm ${
+                      showTerms
+                        ? "bg-peacock-teal text-peacock-on-teal"
+                        : terms.agreed
+                        ? "border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20"
+                        : terms.current
+                        ? "border border-amber-500/30 bg-amber-500/10 text-amber-300 hover:bg-amber-500/20"
+                        : "border border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white"
+                    }`}
+                  >
+                    <Handshake className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">
+                      {terms.agreed ? "Terms Agreed" : terms.current ? "Active Offer" : "Deal Terms"}
+                    </span>
+                    <span className="text-[10px] opacity-70">
+                      {showTerms ? "▲" : "▼"}
+                    </span>
+                  </button>
+                )}
+
+                <SafetyMenu
+                  interestId={interestId}
+                  counterpartName={thread.counterpart.name}
+                  onBlockChange={setBlockState}
+                />
+              </div>
             </div>
 
-            <DisputeBanner disputes={disputes} />
+            {/* Disputes Banner */}
+            <div className="shrink-0">
+              <DisputeBanner disputes={disputes} />
+            </div>
 
-            {terms && (
-              <div className="mb-6">
+            {/* Expandable Deal Terms Drawer */}
+            {terms && showTerms && (
+              <div className="shrink-0 mb-3 max-h-60 sm:max-h-72 overflow-y-auto rounded-2xl border border-white/10 bg-peacock-surface/95 p-3 sm:p-4 shadow-xl backdrop-blur-md animate-in slide-in-from-top-2 duration-150">
                 <DealTermsPanel
                   interestId={interestId}
                   terms={terms}
                   onChange={(next) => {
                     setTerms(next)
-                    // Accepting terms unlocks delivery, so re-read it.
                     getDelivery(interestId).then(setDelivery).catch(() => {})
                   }}
                   counterpartName={thread.counterpart.name}
                 />
-
                 {delivery && reviews && (
                   <div className="mt-4">
                     <DeliveryPanel
@@ -175,25 +276,48 @@ export default function ThreadPage() {
               </div>
             )}
 
-            <div className="flex-1 space-y-3 overflow-y-auto pr-1">
+            {/* Scrollable Messages Container */}
+            <div
+              ref={messagesContainerRef}
+              className="flex-1 min-h-0 space-y-3 overflow-y-auto px-1 py-2"
+            >
               {thread.messages.length === 0 && (
                 <p className="py-12 text-center text-sm text-gray-500">
                   No messages yet — say hello.
                 </p>
               )}
               {thread.messages.map((m) => (
-                <div key={m.id} className={`flex ${m.is_mine ? "justify-end" : "justify-start"}`}>
+                <div
+                  key={m.id}
+                  className={`flex ${m.is_mine ? "justify-end" : "justify-start"} items-end gap-2`}
+                >
+                  {!m.is_mine && (
+                    <div className="shrink-0 mb-1">
+                      {thread.counterpart.avatar_url ? (
+                        <img
+                          src={getSafeImageUrl(thread.counterpart.avatar_url)}
+                          alt={thread.counterpart.name}
+                          referrerPolicy="no-referrer"
+                          className="h-7 w-7 rounded-full border border-white/10 object-cover"
+                        />
+                      ) : (
+                        <div className="flex h-7 w-7 items-center justify-center rounded-full border border-white/10 bg-white/5 text-peacock-teal">
+                          <User className="h-4 w-4" />
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <div
-                    className={`max-w-[75%] rounded-2xl px-4 py-2.5 text-sm ${
+                    className={`max-w-[85%] sm:max-w-[75%] rounded-2xl px-4 py-2.5 text-sm shadow-sm ${
                       m.is_mine
-                        ? "bg-indigo-600 text-indigo-950"
-                        : "border border-white/10 bg-white/5 text-gray-200"
+                        ? "bg-peacock-teal text-peacock-on-teal font-medium"
+                        : "border border-white/10 bg-peacock-surface text-gray-100"
                     }`}
                   >
                     <p className="whitespace-pre-wrap break-words">{m.body}</p>
                     <p
                       className={`mt-1 text-[11px] ${
-                        m.is_mine ? "text-indigo-200" : "text-gray-500"
+                        m.is_mine ? "text-peacock-on-teal/70" : "text-gray-400"
                       }`}
                     >
                       {formatTime(m.created_at)}
@@ -204,43 +328,43 @@ export default function ThreadPage() {
               <div ref={bottomRef} />
             </div>
 
-            {closed ? (
-              <p className="mt-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-gray-500">
-                This interest was withdrawn — the conversation is closed.
-              </p>
-            ) : blockState.blocked ? (
-              // Says which way the block runs. "You cannot send messages" with
-              // no explanation reads as a bug, and the two cases have
-              // different answers: one you can undo, the other you cannot.
-              <p className="mt-6 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-gray-500">
-                {blockState.blocked_by_me
-                  ? "You blocked this conversation. Unblock from the shield menu to message again."
-                  : `${thread.counterpart.name} has blocked messaging on this deal.`}
-              </p>
-            ) : (
-              <form onSubmit={handleSend} className="mt-6 flex gap-2">
-                <input
-                  type="text"
-                  value={draft}
-                  onChange={(e) => setDraft(e.target.value)}
-                  placeholder="Write a message…"
-                  disabled={sending}
-                  className="flex-1 rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-                />
-                <button
-                  type="submit"
-                  disabled={sending || !draft.trim()}
-                  className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-3 text-sm font-medium text-indigo-950 transition hover:bg-indigo-500 disabled:opacity-50"
-                >
-                  {sending ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Send className="h-4 w-4" />
-                  )}
-                </button>
-              </form>
-            )}
-          </>
+            {/* Bottom Anchored Input Bar */}
+            <div className="shrink-0 pt-2 pb-1 border-t border-white/10">
+              {closed ? (
+                <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-gray-500">
+                  This interest was withdrawn — the conversation is closed.
+                </p>
+              ) : blockState.blocked ? (
+                <p className="rounded-xl border border-white/10 bg-white/5 px-4 py-3 text-center text-sm text-gray-500">
+                  {blockState.blocked_by_me
+                    ? "You blocked this conversation. Unblock from the shield menu to message again."
+                    : `${thread.counterpart.name} has blocked messaging on this deal.`}
+                </p>
+              ) : (
+                <form onSubmit={handleSend} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={draft}
+                    onChange={(e) => setDraft(e.target.value)}
+                    placeholder="Write a message…"
+                    disabled={sending}
+                    className="flex-1 rounded-xl border border-white/10 bg-peacock-surface px-4 py-3 text-sm text-white placeholder-gray-500 focus:border-peacock-teal focus:outline-none focus:ring-1 focus:ring-peacock-teal shadow-inner"
+                  />
+                  <button
+                    type="submit"
+                    disabled={sending || !draft.trim()}
+                    className="flex items-center gap-2 rounded-xl bg-peacock-teal px-5 py-3 text-sm font-bold text-peacock-on-teal transition hover:brightness-110 disabled:opacity-50 shadow-md shrink-0"
+                  >
+                    {sending ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Send className="h-4 w-4" />
+                    )}
+                  </button>
+                </form>
+              )}
+            </div>
+          </div>
         )}
       </div>
     </div>

@@ -13,6 +13,13 @@ class Counterpart(BaseModel):
     #: Creator: category. Brand: industry. Both are the natural "what are they" field.
     subtitle: Optional[str] = None
     location: Optional[str] = None
+    avatar_url: Optional[str] = None
+
+
+class StartThreadRequest(BaseModel):
+    creator_id: int
+    campaign_id: Optional[int] = None
+    message: Optional[str] = None
 
 
 class MessageOut(BaseModel):

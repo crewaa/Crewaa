@@ -670,11 +670,11 @@ export default function DiscoverCreatorsPage() {
                     </Link>
 
                     <Link
-                      href="/dashboard/messages"
-                      className="inline-flex items-center gap-1.5 rounded-lg bg-white/5 border border-white/10 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-white/10 transition"
+                      href={`/dashboard/brand/creators/${creator.creator_id}`}
+                      className="inline-flex items-center gap-1.5 rounded-lg bg-peacock-teal px-3.5 py-1.5 text-xs font-bold text-peacock-on-teal hover:brightness-110 transition shadow-sm"
                     >
-                      <MessageCircle className="h-3.5 w-3.5 text-peacock-teal" />
-                      Contact / Chat
+                      <MessageCircle className="h-3.5 w-3.5" />
+                      Message Creator
                     </Link>
                   </div>
                 </div>
