@@ -37,34 +37,22 @@ function compact(n?: number | null): string {
 function InterestedCreatorsContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const initialCampaignId = searchParams.get("campaign_id")
-    ? Number(searchParams.get("campaign_id"))
-    : undefined
+  const campaignQueryParam = searchParams.get("campaign_id")
+  const selectedCampaignId = campaignQueryParam ? Number(campaignQueryParam) : undefined
 
-  const [selectedCampaignId, setSelectedCampaignId] = useState<number | undefined>(initialCampaignId)
   const [creators, setCreators] = useState<InterestedCreator[]>([])
   const [campaigns, setCampaigns] = useState<CampaignSummary[]>([])
-  const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState("")
 
-  // Keep state in sync if URL query parameter changes
-  useEffect(() => {
-    const param = searchParams.get("campaign_id")
-    setSelectedCampaignId(param ? Number(param) : undefined)
-  }, [searchParams])
-
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setError("")
 
     getInterestedCreators(selectedCampaignId)
       .then((data) => {
         if (!cancelled) {
           setCreators(data.creators || [])
           setCampaigns(data.campaigns || [])
-          setTotal(data.total || 0)
         }
       })
       .catch((err) => {
@@ -80,7 +68,8 @@ function InterestedCreatorsContent() {
   }, [selectedCampaignId])
 
   function handleSelectCampaign(id?: number) {
-    setSelectedCampaignId(id)
+    setLoading(true)
+    setError("")
     if (id) {
       router.push(`/dashboard/brand/interested?campaign_id=${id}`, { scroll: false })
     } else {

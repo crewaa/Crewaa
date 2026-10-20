@@ -76,15 +76,33 @@ async def _counterpart(db: AsyncSession, current_user_id: int, interest: Opportu
     # Resolve creator avatar from Instagram or YouTube
     avatar_url = None
     ig = (await db.execute(
-        select(InstagramProfile.profile_picture).where(InstagramProfile.user_id == interest.creator_id)
-    )).scalar()
-    if ig:
+        select(InstagramProfile.profile_picture)
+        .where(InstagramProfile.user_id == interest.creator_id)
+        .order_by(InstagramProfile.scraped_at.desc())
+    )).scalars().first()
+
+    yt = (await db.execute(
+        select(YouTubeChannel.profile_picture)
+        .where(YouTubeChannel.user_id == interest.creator_id)
+        .order_by(YouTubeChannel.scraped_at.desc())
+    )).scalars().first()
+
+    # If Instagram URL has expired signature, prefer non-expiring YouTube picture
+    ig_expired = False
+    if ig and "oe=" in ig:
+        try:
+            oe_hex = ig.split("oe=")[1].split("&")[0]
+            exp_ts = int(oe_hex, 16)
+            ig_expired = datetime.now(timezone.utc).timestamp() > (exp_ts - 300)
+        except Exception:
+            ig_expired = False
+
+    if ig and not ig_expired:
         avatar_url = ig
-    else:
-        yt = (await db.execute(
-            select(YouTubeChannel.profile_picture).where(YouTubeChannel.user_id == interest.creator_id)
-        )).scalar()
+    elif yt:
         avatar_url = yt
+    elif ig:
+        avatar_url = ig
 
     return Counterpart(
         user_id=interest.creator_id,

@@ -268,6 +268,9 @@ def _headline_stats(payload: dict) -> dict:
         "engagement_rate": None, "is_verified": None,
     }
 
+    ig_pic = None
+    yt_pic = None
+
     for platform in payload.get("platforms", []):
         if platform.get("platform") == "instagram":
             engagement = platform.get("engagement", {})
@@ -277,14 +280,32 @@ def _headline_stats(payload: dict) -> dict:
             stats["engagement_rate"] = engagement.get("engagement_rate")
             stats["is_verified"] = platform.get("verified")
             if platform.get("profile_picture"):
-                stats["avatar_url"] = platform.get("profile_picture")
-                stats["profile_picture"] = platform.get("profile_picture")
+                ig_pic = platform.get("profile_picture")
         elif platform.get("platform") == "youtube":
             stats["subscribers"] = platform.get("subscribers")
-            if not stats.get("avatar_url") and platform.get("profile_picture"):
-                stats["avatar_url"] = platform.get("profile_picture")
-                stats["profile_picture"] = platform.get("profile_picture")
+            if platform.get("profile_picture"):
+                yt_pic = platform.get("profile_picture")
 
+    # Check if Instagram URL has expired signature
+    ig_expired = False
+    if ig_pic and "oe=" in ig_pic:
+        try:
+            oe_hex = ig_pic.split("oe=")[1].split("&")[0]
+            exp_ts = int(oe_hex, 16)
+            ig_expired = datetime.now(timezone.utc).timestamp() > (exp_ts - 300)
+        except Exception:
+            ig_expired = False
+
+    chosen_avatar = None
+    if ig_pic and not ig_expired:
+        chosen_avatar = ig_pic
+    elif yt_pic:
+        chosen_avatar = yt_pic
+    elif ig_pic:
+        chosen_avatar = ig_pic
+
+    stats["avatar_url"] = chosen_avatar
+    stats["profile_picture"] = chosen_avatar
     return stats
 
 
