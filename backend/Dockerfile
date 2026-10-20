@@ -26,6 +26,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY app ./app
+COPY evals ./evals
 COPY alembic.ini ./
 COPY seed_admin.py ./
 

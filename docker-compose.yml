@@ -1,0 +1,92 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: crewaa-backend:latest
+    container_name: crewaa-backend
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - APP_NAME=Crewaa
+      - ENV=production
+      - DATABASE_URL=postgresql+asyncpg://postgres:password@db:5432/crewaa
+      - REDIS_URL=redis://redis:6379/0
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY:-default_insecure_key_override_in_env}
+      - JWT_ALGORITHM=HS256
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+      - REFRESH_TOKEN_EXPIRE_DAYS=7
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    networks:
+      - crewaa-network
+
+  evals:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: crewaa-backend:latest
+    container_name: crewaa-evals
+    # Runs the offline replay evaluations or live evals
+    command: ["python", "-m", "evals.runner"]
+    environment:
+      - ENV=test
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+    networks:
+      - crewaa-network
+    profiles:
+      - evals
+
+  db:
+    image: postgres:16-alpine
+    container_name: crewaa-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=crewaa
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crewaa-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: crewaa-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - crewaa-network
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  crewaa-network:
+    driver: bridge

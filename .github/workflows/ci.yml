@@ -57,6 +57,9 @@ jobs:
         # suite. See backend/evals/README.md.
         run: python -m evals.runner
 
+      - name: LLM Judge & Calibration unit tests
+        run: pytest -q tests/test_judge_calibration.py
+
       - name: Migrations build a schema matching the models
         # Guards against a repeat of revision dd173ce633c3, which silently
         # dropped a table that the models still required.
@@ -160,3 +163,51 @@ jobs:
             exit 1
           fi
           echo "No credentials detected."
+
+  docker-backend:
+    name: Docker — container build & registry publish
+    needs: [backend, secret-scan]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build backend Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          load: true
+          tags: crewaa-backend:test
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Verify container execution & prompt evals in Docker
+        run: |
+          docker run --rm crewaa-backend:test python -c "import app.main; print('Container image imports cleanly!')"
+          docker run --rm crewaa-backend:test python -m evals.runner
+
+      - name: Log in to GitHub Container Registry
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish production image to GHCR
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository }}/backend:latest
+            ghcr.io/${{ github.repository }}/backend:${{ github.sha }}
+          cache-from: type=gha
